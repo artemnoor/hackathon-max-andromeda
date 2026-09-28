@@ -1,1 +1,0 @@
-"""Admission-benefit domain internals."""

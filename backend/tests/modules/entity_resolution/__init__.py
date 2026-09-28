@@ -1,1 +1,0 @@
-"""Entity-resolution module tests."""

@@ -1,1 +1,0 @@
-"""Comparison domain internals."""

@@ -1,0 +1,47 @@
+{
+  "name": "hackathon-max-andromeda",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:bot": "tsx watch src/entrypoints/bot.ts",
+    "dev:miniapp": "tsx watch src/entrypoints/miniapp.ts",
+    "start:bot": "node dist/src/entrypoints/bot.js",
+    "start:miniapp": "node dist/src/entrypoints/miniapp.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "lint": "node scripts/lint.mjs",
+    "test": "tsx --test tests/**/*.test.ts",
+    "test:coverage": "tsx --test --experimental-test-coverage tests/**/*.test.ts",
+    "test:integration": "node scripts/integration-check.mjs",
+    "test:browser": "node scripts/browser-check.mjs",
+    "check:miniapp": "node scripts/miniapp-check.mjs",
+    "check:architecture": "node scripts/architecture-check.mjs",
+    "check:env": "node scripts/env-example-check.mjs",
+    "check:compose": "node scripts/compose-contract-check.mjs",
+    "check:secrets": "node scripts/secret-check.mjs",
+    "docs:check": "node scripts/docs-check.mjs",
+    "coverage:check": "node scripts/coverage-check.mjs",
+    "audit": "npm audit --audit-level=high",
+    "verify": "node scripts/check.mjs --full"
+  },
+  "dependencies": {
+    "@maxhub/max-bot-api": "^0.3.1",
+    "dotenv": "^16.4.7",
+    "ioredis": "5.6.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.10.2",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "playwright": "1.63.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.71.0"
+  }
+}
