@@ -11,7 +11,7 @@
 - miniapp содержит отдельную статическую оболочку и MAX Bridge adapter.
 - MAX platform user ID не является Andromeda AccountId, auth role или правом доступа.
 - Andromeda Public API client/auth exchange/business logic сейчас отсутствуют.
-- Не добавляй Portal module/plugin framework, product business modules, PostgreSQL schemas или migrations без отдельной задачи.
+- Не добавляй generic plugin framework, product business modules, PostgreSQL schemas или migrations без отдельной задачи.
 - MAX initData проверяется только на сервере; initDataUnsafe не является подтверждением личности.
 - MAX credentials, raw initData, update bodies, user IDs и deep-link values не логируются.
 

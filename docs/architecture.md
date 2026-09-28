@@ -3,10 +3,17 @@
 ## Runtime boundary
 
 ```text
-MAX Bot ───────────────┐
-                       ├─ MAX transport foundation (this repository)
-MAX Mini App ──────────┘          │
-                                  └─ no Andromeda backend connection yet
+MAX User
+  ├─ Bot ───────────→ MAX Bot Transport Adapter ─────┐
+  └─ Mini App ──────→ MAX Bridge + Mini App Host ────┤
+                                                      ↓
+                                        Future application integration boundary
+                                            [not implemented in this phase]
+                                                      ↓
+                                         Andromeda Public API v1
+                                                [NEXT PHASE]
+
+Shared MAX infrastructure (config, logging, security and Redis state) supports both adapters.
 ```
 
 The repository is a small Node.js modular application. `src/max` owns MAX protocol normalization, SDK access, callbacks, Webhook/polling and deep links. `src/shared` contains bounded configuration, safe errors, redacting logs and ephemeral transport state. `src/web` hosts only the static Mini App shell, health routes and MAX launch proof verification. `miniapp` is a static MAX Bridge adapter and presentational shell.
