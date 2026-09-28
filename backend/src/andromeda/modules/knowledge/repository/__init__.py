@@ -1,0 +1,31 @@
+from .ports import (
+    ChangeEventRepository,
+    ClaimRepository,
+    ConflictGroupRepository,
+    KnowledgeCandidateRepository,
+    KnowledgeRelationRepository,
+    KnowledgeReviewActionRepository,
+    KnowledgeReviewAuthorizer,
+    KnowledgeReviewCandidateRepository,
+    KnowledgeReviewUnitOfWork,
+    KnowledgeSourceRepository,
+    SourceObservationRepository,
+    SourceRegistryReader,
+    SourceRegistryWriter,
+)
+
+__all__ = [
+    "ChangeEventRepository",
+    "ClaimRepository",
+    "ConflictGroupRepository",
+    "KnowledgeCandidateRepository",
+    "KnowledgeRelationRepository",
+    "KnowledgeReviewActionRepository",
+    "KnowledgeReviewAuthorizer",
+    "KnowledgeReviewCandidateRepository",
+    "KnowledgeReviewUnitOfWork",
+    "KnowledgeSourceRepository",
+    "SourceObservationRepository",
+    "SourceRegistryReader",
+    "SourceRegistryWriter",
+]

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "lock_id", "status", "dataset_hash", "tool", "model", "definitions"],
+  "properties": {
+    "schema_version": {"const": "decision-lock.v1"},
+    "lock_id": {"type": "string", "pattern": "^decision-lock-v1-[a-f0-9]{12}$"},
+    "status": {"enum": ["validated", "calibration_unavailable"]},
+    "dataset_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "generated_at": {"type": "string", "minLength": 1},
+    "tool": {"type": "object", "required": ["name", "commit"], "properties": {"name": {"type": "string"}, "commit": {"type": "string"}}, "additionalProperties": false},
+    "model": {"type": "object", "required": ["provider", "model", "version", "source"], "properties": {"provider": {"type": "string"}, "model": {"type": "string"}, "version": {"type": "string"}, "source": {"type": "string"}}, "additionalProperties": false},
+    "definitions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["definition_version", "threshold", "coverage", "heldout_count", "ece", "accepted_accuracy"],
+        "properties": {
+          "definition_version": {"type": "string", "minLength": 1},
+          "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+          "coverage": {"type": "number", "minimum": 0, "maximum": 1},
+          "heldout_count": {"type": "integer", "minimum": 1},
+          "ece": {"type": "number", "minimum": 0, "maximum": 1},
+          "accepted_accuracy": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

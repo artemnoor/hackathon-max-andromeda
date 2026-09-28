@@ -1,0 +1,7 @@
+.git
+.github
+backend
+output
+*.xlsx
+*.pyc
+__pycache__

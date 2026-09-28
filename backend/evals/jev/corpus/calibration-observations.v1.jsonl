@@ -1,0 +1,15 @@
+{"case_id":"intent-train-001","definition_id":"intent.v1","split":"train","probability":0.94,"correct":true}
+{"case_id":"intent-dev-001","definition_id":"intent.v1","split":"dev","probability":0.86,"correct":true}
+{"case_id":"intent-heldout-001","definition_id":"intent.v1","split":"heldout","probability":0.82,"correct":true}
+{"case_id":"metric-train-001","definition_id":"metric.v1","split":"train","probability":0.91,"correct":true}
+{"case_id":"metric-dev-001","definition_id":"metric.v1","split":"dev","probability":0.78,"correct":true}
+{"case_id":"metric-heldout-001","definition_id":"metric.v1","split":"heldout","probability":0.81,"correct":true}
+{"case_id":"action-train-001","definition_id":"next-action.v1","split":"train","probability":0.89,"correct":true}
+{"case_id":"action-dev-001","definition_id":"next-action.v1","split":"dev","probability":0.83,"correct":true}
+{"case_id":"action-heldout-001","definition_id":"next-action.v1","split":"heldout","probability":0.79,"correct":true}
+{"case_id":"presentation-train-001","definition_id":"presentation.v1","split":"train","probability":0.88,"correct":true}
+{"case_id":"presentation-dev-001","definition_id":"presentation.v1","split":"dev","probability":0.84,"correct":true}
+{"case_id":"presentation-heldout-001","definition_id":"presentation.v1","split":"heldout","probability":0.76,"correct":true}
+{"case_id":"semantic-train-001","definition_id":"semantic-feature.v1","split":"train","probability":0.74,"correct":true}
+{"case_id":"semantic-dev-001","definition_id":"semantic-feature.v1","split":"dev","probability":0.71,"correct":true}
+{"case_id":"semantic-heldout-001","definition_id":"semantic-feature.v1","split":"heldout","probability":0.68,"correct":true}

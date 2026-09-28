@@ -1,0 +1,418 @@
+name: andromeda-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  jev-ecosystem-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked Jev evaluation environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra evaluation --extra jev --extra jevql
+        working-directory: backend
+      - name: Verify optional tool manifest and lock reproducibility
+        run: |
+          uv lock --check
+          uv run --locked --extra dev python -m pytest -q tests/evaluation/test_jev_tool_manifest.py
+        working-directory: backend
+      - name: Run upstream integration contract tests without provider secrets
+        run: |
+          uv run --locked --extra evaluation --extra jev --extra jevql --extra dev python -m pytest -q \
+            tests/evaluation/test_jev_ecosystem_harness.py \
+            tests/evaluation/test_jevcal_artifacts.py \
+            tests/evaluation/test_jevcal_exporter.py \
+            tests/evaluation/test_jev_align_adapter.py \
+            tests/infrastructure/test_jev_adapter.py \
+            tests/infrastructure/test_jevcal_cascade.py \
+            tests/infrastructure/jevql \
+            tests/modules/entity_resolution/test_hierarchical.py \
+            tests/modules/entity_resolution/test_services.py \
+            tests/composition/test_jevql_wiring.py
+        working-directory: backend
+      - name: Run jev-tree bridge smoke with pinned npm package
+        run: |
+          npm ci --ignore-scripts
+          printf '%s' '{"query":"program","entityType":"program","candidates":[{"canonical_id":"program:test:09.03.03-001","label":"program","code":"09.03.03-001"}],"tree":{"root":{"node_id":"root","depth":0,"candidate_ids":["program:test:09.03.03-001"],"children":[]},"max_depth":4,"max_fanout":16},"candidateHash":"ci","maxFanout":16,"maxDepth":4,"maxCalls":1,"timeoutMs":1000}' | node src/index.mjs
+        working-directory: backend/jev-tree-bridge
+      - name: Run Jev ecosystem offline report and boundary checks
+        run: |
+          uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output "$RUNNER_TEMP/jev-ecosystem-report.json" --check
+          uv run --locked --extra dev python -m pytest -q tests/architecture/test_jev_boundaries.py tests/architecture/test_module_boundaries.py
+        working-directory: backend
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          command -v pdftotext
+          pdftotext -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify BMSTU study-plan text layer
+        run: |
+          pdftotext -layout backend/tests/fixtures/tracer/raw/curriculum.pdf "$RUNNER_TEMP/bmstu-curriculum.txt"
+          grep -q "ПЛАН УЧЕБНОГО ПРОЦЕССА" "$RUNNER_TEMP/bmstu-curriculum.txt"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser --extra evaluation --extra jev --extra jevql
+        working-directory: backend
+      - name: Run ingestion capability preflight
+        run: uv run --locked --extra dev --extra browser python scripts/preflight.py --profile bmstu --profile hse
+        working-directory: backend
+      - name: Run backend tests
+        run: uv run --locked --extra dev --extra browser python -m pytest -q --cov=src/andromeda --cov-report=term-missing --cov-report=xml:coverage-backend.xml --junitxml=junit-backend.xml
+        working-directory: backend
+      - name: Run explicit architecture boundary gate
+        run: uv run --locked --extra dev --extra browser python -m pytest -q tests/architecture
+        working-directory: backend
+      - name: Run empty-database migration gate
+        run: |
+          export ANDROMEDA_DATABASE_URL="sqlite:///$RUNNER_TEMP/andromeda-migration.db"
+          uv run --locked --extra dev python -m alembic upgrade head
+          uv run --locked --extra dev python -m alembic check
+        working-directory: backend
+      - name: Run all-university fixture ingestion and canonical API smoke
+        run: uv run --project backend --locked --extra dev --extra browser python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///$RUNNER_TEMP/andromeda-ci.db --log-level ERROR
+      - name: Run strict backend typing
+        run: uv run --locked --extra dev --extra browser python -m mypy
+        working-directory: backend
+      - name: Upload backend test and coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-and-coverage
+          path: |
+            backend/coverage-backend.xml
+            backend/junit-backend.xml
+
+  frontend-next:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
+      - name: Export full application OpenAPI contract
+        run: uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --surface full --out frontend-next/openapi.ci.json
+      - name: Export canonical Public API v1 OpenAPI contract
+        run: uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --surface public-v1 --out frontend-next/openapi.public.ci.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Check full OpenAPI snapshot drift
+        run: npm run check-openapi-snapshot
+        working-directory: frontend-next
+        env:
+          OPENAPI_FILE: openapi.ci.json
+          OPENAPI_SNAPSHOT: openapi.json
+      - name: Check canonical Public API v1 snapshot drift
+        run: npm run check-openapi-snapshot
+        working-directory: frontend-next
+        env:
+          OPENAPI_FILE: openapi.public.ci.json
+          OPENAPI_SNAPSHOT: ../openapi.json
+      - name: Validate DATA-API against official schema and Public OpenAPI
+        run: uv run --project backend --locked --extra dev python scripts/data_api/validate_data_api.py DATA-API.yaml --schema scripts/data_api/DATA-API.schema.json --openapi openapi.json
+      - name: Check generated internal API client drift
+        run: npm run check-api-drift
+        working-directory: frontend-next
+        env:
+          OPENAPI_FILE: openapi.ci.json
+      - name: Check generated public API client drift
+        run: npm run check-public-api-drift
+        working-directory: frontend-next
+        env:
+          OPENAPI_FILE: openapi.public.ci.json
+      - name: Run Next unit tests
+        run: npm run test:unit
+        working-directory: frontend-next
+      - name: Run Next unit coverage
+        run: npm run test:unit:coverage
+        working-directory: frontend-next
+      - name: Lint canonical Next app
+        run: npm run lint
+        working-directory: frontend-next
+      - name: Build canonical Next app
+        run: npm run build
+        working-directory: frontend-next
+      - name: Upload frontend coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-and-coverage
+          path: frontend-next/coverage
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repository documentation links
+        run: python scripts/check_docs.py
+      - name: Verify canonical command surface
+        run: python scripts/andromeda.py --help
+      - name: Verify release metadata has a clean worktree
+        run: python scripts/release_evidence.py --require-clean
+      - name: Verify deployment packaging contract
+        run: python scripts/check_deployment_artifacts.py
+      - name: Verify clean patch formatting
+        run: git diff --check
+
+  packaging:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-next]
+    env:
+      BACKEND_IMAGE: andromeda-backend:ci
+      FRONTEND_IMAGE: andromeda-frontend:ci
+      ANDROMEDA_STAGING_DB: andromeda_ci
+      ANDROMEDA_STAGING_DB_USER: andromeda
+      ANDROMEDA_STAGING_DB_PASSWORD: ci-only-placeholder
+      ANDROMEDA_DOMAIN: andromeda.example.org
+      ANDROMEDA_OPS_API_KEY: ci-only-ops-key
+      ANDROMEDA_RENDER_HMAC_SECRET: ci-only-render-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tracked deployment contract
+        run: python scripts/check_deployment_artifacts.py
+      - name: Build backend image from tracked inputs
+        run: docker build --file backend/Dockerfile --tag "$BACKEND_IMAGE" backend
+      - name: Build frontend standalone image from tracked inputs
+        run: docker build --file frontend-next/Dockerfile --tag "$FRONTEND_IMAGE" frontend-next
+      - name: Validate resolved YC compose contract
+        run: docker compose --file deploy/yc/compose.yaml config --quiet
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
+      - name: Audit locked Python dependencies
+        run: |
+          uv export --locked --format requirements.txt --no-hashes --no-editable --no-dev --no-emit-project --output-file "$RUNNER_TEMP/andromeda-runtime-requirements.txt"
+          uv tool run --from pip-audit==2.9.0 pip-audit -r "$RUNNER_TEMP/andromeda-runtime-requirements.txt" --strict --progress-spinner off
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Audit production JavaScript dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend-next
+
+  fullstack:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-next]
+    env:
+      ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
+      PLAYWRIGHT_OPS_API_KEY: ci-admin-ops-key
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          command -v pdftotext
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Run fixture through DB, API, and canonical Next app
+        run: uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --check --log-level INFO
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend-next
+      - name: Start fixture demo for browser tests
+        shell: bash
+        run: |
+          uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/andromeda-demo.pid"
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/andromeda-demo.log"
+          exit 1
+      - name: Run canonical browser scenarios
+        run: npm run test:e2e
+        working-directory: frontend-next
+      - name: Stop fixture demo
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/andromeda-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-demo.pid")" || true; fi
+      - name: Upload fixture browser logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-browser-logs
+          path: ${{ runner.temp }}/andromeda-demo.log
+
+  postgresql-integration:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-next]
+    env:
+      ANDROMEDA_ENV: test
+      ANDROMEDA_POSTGRES_TEST_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
+      LOG_LEVEL: INFO
+      ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: andromeda_ci
+          POSTGRES_USER: andromeda
+          POSTGRES_PASSWORD: andromeda-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U andromeda -d andromeda_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          command -v pdftotext
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
+      - name: Apply Alembic migrations to PostgreSQL
+        run: uv run --locked --extra dev python -m alembic upgrade head
+        working-directory: backend
+      - name: Run PostgreSQL repository and API checks
+        run: uv run --locked --extra dev python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_admission_benefits.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
+        working-directory: backend
+      - name: Run auth/profile persistence checks
+        run: uv run --locked --extra dev python -m pytest -q tests/api/test_auth_api.py tests/integration/test_user_profile_persistence.py
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Export PostgreSQL job OpenAPI contract
+        run: uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --out frontend-next/openapi.ci.json
+      - run: npm run check-api-drift
+        working-directory: frontend-next
+        env:
+          OPENAPI_FILE: openapi.ci.json
+      - name: Run canonical Next build
+        run: npm run build
+        working-directory: frontend-next
+      - name: Run PostgreSQL fixture fullstack check
+        run: uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --check --log-level INFO
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend-next
+      - name: Start PostgreSQL-backed demo for browser tests
+        shell: bash
+        run: |
+          uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --log-level INFO > "$RUNNER_TEMP/andromeda-postgres-demo.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/andromeda-postgres-demo.pid"
+          for attempt in {1..120}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/andromeda-postgres-demo.log"
+          exit 1
+      - name: Run PostgreSQL-backed browser scenarios
+        run: npm run test:e2e
+        working-directory: frontend-next
+      - name: Stop PostgreSQL-backed demo
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/andromeda-postgres-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-postgres-demo.pid")" || true; fi
+
+  proftest-integration:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-next]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for fixture contracts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser --extra evaluation --extra jev --extra jevql
+        working-directory: backend
+      - name: Run production proftest and admission-fit checks
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
+      - name: Run auth module and API checks
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/auth backend/tests/api/test_auth_api.py backend/tests/integration/test_user_profile_persistence.py
+      - name: Run recommendation module and API integration tests
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/recommendations backend/tests/api/test_recommendations_api.py backend/tests/api/test_recommendations_contract.py backend/tests/integration/test_recommendations_catalog.py
+      - name: Run strict Andromeda typing gate
+        run: uv run --project backend --locked --extra dev --extra browser python -m mypy backend/src/andromeda
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Run canonical Next unit tests
+        run: npm run test:unit
+        working-directory: frontend-next

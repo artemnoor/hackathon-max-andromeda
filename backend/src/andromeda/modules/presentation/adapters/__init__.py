@@ -1,0 +1,1 @@
+"""Optional report renderer adapters."""

@@ -1,0 +1,48 @@
+{
+  "corpus_version": "proftest-v3-signal-corpus.v1",
+  "question_set_version": "proftest-v3",
+  "personas": [
+    {
+      "id": "software-builder",
+      "answers": [
+        {"question_id": "core_doing", "option_ids": ["software_systems", "data_patterns"]},
+        {"question_id": "core_learning", "option_ids": ["computers_data"]},
+        {"question_id": "core_result", "option_ids": ["working_service"]},
+        {"question_id": "core_task_mode", "option_ids": ["prototype_test"]},
+        {"question_id": "core_anti", "option_ids": ["no_exclusions"]}
+      ],
+      "expected_subjects": ["computer_science_data"],
+      "expected_activities": ["software_creation"],
+      "expected_negative": [],
+      "expected_answered_base": 5
+    },
+    {
+      "id": "physics-avoidance",
+      "answers": [
+        {"question_id": "core_doing", "option_ids": ["physical_processes"]},
+        {"question_id": "core_learning", "option_ids": ["physics_devices"]},
+        {"question_id": "core_result", "option_ids": ["tested_device"]},
+        {"question_id": "core_task_mode", "option_ids": ["prototype_test"]},
+        {"question_id": "core_anti", "option_ids": ["avoid_physics"], "intensity": "1"}
+      ],
+      "expected_subjects": ["physics_astronomy", "engineering_technology"],
+      "expected_activities": ["physical_engineering"],
+      "expected_negative": ["physics_astronomy"],
+      "expected_answered_base": 5
+    },
+    {
+      "id": "uncertain-start",
+      "answers": [
+        {"question_id": "core_doing", "option_ids": [], "status": "uncertain"},
+        {"question_id": "core_learning", "option_ids": [], "status": "uncertain"},
+        {"question_id": "core_result", "option_ids": [], "status": "uncertain"},
+        {"question_id": "core_task_mode", "option_ids": [], "status": "uncertain"},
+        {"question_id": "core_anti", "option_ids": [], "status": "uncertain"}
+      ],
+      "expected_subjects": [],
+      "expected_activities": [],
+      "expected_negative": [],
+      "expected_answered_base": 0
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "andromeda-jevcal-manifest.v2",
+  "artifact_id": "jevcal-lock-1984372783fd",
+  "source_kind": "production",
+  "status": "production_ready",
+  "production_gate_reasons": [],
+  "registry_hash": "sha256:7dc01ca8ed684ccd271e265a5a8b7e8cb5d4491684d9b58e176026615cec48b5",
+  "dataset_hash": "a2cbaf7f7d1d19e80a747e0f6213b84dcae12c126a2e28d3fdd73420a6e21285",
+  "corpus_hash": "sha256:44261cc7d77b6f1fd682b03b7511ff8988b4da5d042023008201aa62184ce491",
+  "observations_hash": "sha256:fc43ca69269d838256a0a34872996ef4174dd7cf537091f05aa0694ff1f1ef80",
+  "lock_hash": "sha256:1984372783fd57fbc0a6eeb275a4906b3ebc1640f28ac6fc7375ef14b2807c62",
+  "upstream": {
+    "name": "jevcal",
+    "commit": "ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f",
+    "version": "0.1.0"
+  },
+  "provider": "polza",
+  "endpoint_host": "polza.ai",
+  "model_requested": "typesafe/jev",
+  "model_observed": "jev-1.13.0",
+  "min_support": 30,
+  "min_total": 100,
+  "min_heldout": 30,
+  "target_accuracy": 0.8,
+  "samples_by_definition": {
+    "next-action.v1": {
+      "total": 120,
+      "heldout": 51
+    }
+  },
+  "quality_by_definition": {
+    "next-action.v1": {
+      "status": "ok",
+      "threshold": 0.98,
+      "fit_samples": 69,
+      "fit_accepted": 52,
+      "fit_accepted_accuracy": 0.9230769230769231,
+      "heldout_samples": 51,
+      "heldout_accepted": 40,
+      "heldout_accepted_accuracy": 0.925,
+      "ece": 0.23533333333333328
+    }
+  },
+  "calibrated_definition_ids": [
+    "next-action.v1"
+  ],
+  "definition_versions": {
+    "intent.v1": "intent-definition.v1",
+    "metric.v1": "metric-definition.v1",
+    "next-action.v1": "next-action-definition.v1",
+    "presentation.v1": "presentation-definition.v1",
+    "semantic-feature.v1": "semantic-feature-definition.v1"
+  }
+}

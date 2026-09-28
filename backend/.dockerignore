@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+pipeline_runs/
+tests/
+data/*
+.env
+.env.*
+!.env.example

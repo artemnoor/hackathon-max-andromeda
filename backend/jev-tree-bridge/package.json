@@ -1,0 +1,11 @@
+{
+  "name": "andromeda-jev-tree-bridge",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "dependencies": {
+    "jev-tree": "0.1.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["case_id", "definition_id", "definition_version", "split", "input", "expected"],
+  "properties": {
+    "case_id": {"type": "string", "pattern": "^[a-z0-9-]{1,64}$"},
+    "definition_id": {"type": "string", "minLength": 1},
+    "definition_version": {"type": "string", "minLength": 1},
+    "split": {"enum": ["train", "dev", "heldout"]},
+    "input": {"type": "object"},
+    "expected": {"type": "object"}
+  },
+  "additionalProperties": false
+}

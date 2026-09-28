@@ -1,0 +1,79 @@
+{
+  "schema_version": "andromeda.jev-knowledge-policy-evaluation-gate.v1",
+  "scope": "bounded semantic suggestions for knowledge and policy review",
+  "registered_policy_operations": [],
+  "reused_existing_operations": [
+    {
+      "operation": "resolve_olympiad_profile",
+      "definition_id": "olympiad-profile-resolution.v1",
+      "definition_version": "olympiad-profile-resolution-definition.v1",
+      "registry_artifact": "config/jev/question-definitions.admission.v1.yaml",
+      "registry_artifact_sha256": "4653b9904bb8b550a8686bca202ee70cbeecb4b50175d49d5a7524e8206c36c6",
+      "golden_corpus": "evals/jev/corpus/operation-captures/olympiad-profile-resolution.v2.cases.jsonl",
+      "golden_corpus_sha256": "5e9ce67abf6bd948195033ef486639a8d61f0dfac470edd51f2901dd4aa69ce4",
+      "case_count": 120,
+      "split_counts": {
+        "train": 58,
+        "heldout": 62
+      },
+      "label_origin": "source-backed BMSTU 2026 fixture parsed by the deterministic admission adapter before provider evaluation",
+      "provider_observations_are_separate": true,
+      "production_calibration_status": "missing_operation_specific_lock",
+      "production_eligible": false
+    }
+  ],
+  "knowledge_policy_rollout": {
+    "state": "off",
+    "shadow_prediction_enabled": false,
+    "assisted_selection_enabled": false,
+    "reason": "no policy-specific operation or exact relation-review consumer is registered",
+    "future_audit_fields": [
+      "operation_id",
+      "definition_id",
+      "definition_version",
+      "candidate_set_hash",
+      "prompt_hash",
+      "provider",
+      "model_version",
+      "calibration_lock_id",
+      "latency_ms",
+      "error_or_fallback_reason",
+      "reviewer_outcome",
+      "captured_at"
+    ],
+    "raw_source_text_in_audit": false,
+    "applicant_profile_in_audit": false
+  },
+  "future_operation_requirements": {
+    "ground_truth_frozen_before_model_run": true,
+    "labels_independently_authored": true,
+    "model_predictions_may_become_labels": false,
+    "candidate_ids_must_be_deterministically_supplied": true,
+    "maximum_candidates": 8,
+    "maximum_evidence_span_chars": 2000,
+    "minimum_golden_cases_for_matching_used_in_production_staging_or_canonical_decisions": 500,
+    "required_strata": [
+      "exact_identity",
+      "paraphrase",
+      "typo",
+      "ambiguous",
+      "missing_target",
+      "adversarial",
+      "non_match"
+    ],
+    "required_metrics": [
+      "false_match",
+      "false_no_match",
+      "unresolved_recall",
+      "hallucinated_relation",
+      "incorrect_relation_type",
+      "incorrect_override",
+      "incorrect_scope_resolution",
+      "incorrect_temporal_applicability"
+    ],
+    "thresholds_must_be_approved_before_rollout": true,
+    "operation_definition_prompt_model_provider_and_corpus_hashes_required": true,
+    "unresolved_or_regressed_operation_state": "off_or_shadow_only",
+    "canonical_write_from_prediction_allowed": false
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "jevcal_version": "0.1.0",
+  "created": "2026-09-23T14:19:28+00:00",
+  "provider": "polza",
+  "model_requested": "typesafe/jev",
+  "model_observed": [
+    "jev-1.13.0"
+  ],
+  "questions_sha": "dd4bc58372e9ac73fa1d9fb3d91b73564a19fbda7accad453849cfe77c81a84e",
+  "dataset_sha": "55b5f853a2a07406aea0669d7fe180f96f594c15fb9cac84ac6f38d40c2404f0",
+  "n_rows": 120,
+  "holdout": 0.5,
+  "seed": 7,
+  "questions": {
+    "next-action.v1": {
+      "type": "choice",
+      "instructions": "Select the next action from the typed state and available actions. If intent is compare_programs and next_action is execute_query, choose compare; this asks the application to execute the same typed query and render it as a comparison. For another executable intent, choose execute_query. Choose ask_clarification only when a required slot is missing or unresolved. Never choose a report or mini-app action unless that capability is explicitly available.",
+      "criteria": {
+        "ask_clarification": "ask_clarification",
+        "execute_query": "execute_query",
+        "show_result": "show_result",
+        "compare": "compare",
+        "build_report": "build_report",
+        "open_mini_app": "open_mini_app"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": 0.64,
+      "status": "ok",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": 1.0,
+        "coverage": 1.0,
+        "holdout_accepted_accuracy": 1.0,
+        "holdout_coverage": 1.0,
+        "ece": 0.04391666666666675
+      }
+    }
+  },
+  "cost": {
+    "captured_model_calls": 120,
+    "input_tokens": 64276,
+    "output_tokens": 8550
+  }
+}

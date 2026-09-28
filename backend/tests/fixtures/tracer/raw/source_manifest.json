@@ -1,0 +1,64 @@
+{
+  "snapshots": [
+    {
+      "source_kind": "bmstu_common",
+      "requested_url": "https://bmstu.ru/sveden/common/",
+      "final_url": "https://bmstu.ru/sveden/common/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-10T11:55:25.904757+00:00",
+      "content_sha256": "27c7a2142d586ce462b3753c6a5e5061f667f3ef7ac6a2f3ae32b642cb6261ff",
+      "body_path": "common.html"
+    },
+    {
+      "source_kind": "bmstu_major_catalog",
+      "requested_url": "https://bmstu.ru/bachelor/majors",
+      "final_url": "https://bmstu.ru/bachelor/majors",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-10T11:55:32.419157+00:00",
+      "content_sha256": "5d8460c5662b476f7c2d2611426134169f4926febfbf2a755fd3f6e97e889fd3",
+      "body_path": "catalog.html"
+    },
+    {
+      "source_kind": "bmstu_major_catalog",
+      "requested_url": "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty?limit=100&offset=0",
+      "final_url": "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty?limit=100&offset=0",
+      "status_code": 200,
+      "content_type": "application/json; charset=UTF-8",
+      "captured_at": "2026-09-10T11:55:32.539104+00:00",
+      "content_sha256": "121c58c40e9e371b20454700618eefc24fad9c96d7d81ec3413b5289d56964db",
+      "body_path": "catalog_2.json"
+    },
+    {
+      "source_kind": "bmstu_major_detail",
+      "requested_url": "https://bmstu.ru/bachelor/majors/informatika-i-vycislitelnaa-tehnika-090301",
+      "final_url": "https://bmstu.ru/bachelor/majors/informatika-i-vycislitelnaa-tehnika-090301",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-10T11:55:37.703080+00:00",
+      "content_sha256": "7145f212707d923433cced08977bea99eacc8604865ab1bb4877405c3d429eaf",
+      "body_path": "detail.html"
+    },
+    {
+      "source_kind": "bmstu_curriculum_document",
+      "requested_url": "https://disk.yandex.ru/d/-HJXSKu2eN0Qzg",
+      "final_url": "https://disk.yandex.ru/d/-HJXSKu2eN0Qzg",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "captured_at": "2026-09-10T11:55:38.363873+00:00",
+      "content_sha256": "6ff702f01fae34893897dc047249131cf62c760de1d3181707dc970faaae9fa0",
+      "body_path": "curriculum.pdf"
+    },
+    {
+      "source_kind": "bmstu_curriculum_document",
+      "requested_url": "https://disk.yandex.ru/d/mwXCgDtAGpDWdA",
+      "final_url": "https://disk.yandex.ru/d/mwXCgDtAGpDWdA",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "captured_at": "2026-09-10T11:55:42.701847+00:00",
+      "content_sha256": "0358f9b5fb94304c3ed012f9285ec5bf7587dd272c499cd733f5ecad4dbc0047",
+      "body_path": "curriculum_2.pdf"
+    }
+  ]
+}

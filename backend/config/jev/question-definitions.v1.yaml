@@ -1,0 +1,160 @@
+version: question-registry.v1
+definitions:
+  - definition_id: intent.v1
+    kind: intent
+    operation: resolve_intent
+    version: intent-definition.v1
+    instructions: Resolve only the supported Andromeda conversation intent.
+    criteria:
+      - Return one supported intent code.
+      - Do not answer factual catalog questions.
+    options:
+      - code: catalog_search
+        description: Search the educational catalog.
+      - code: comparison
+        description: Compare resolved educational entities.
+      - code: admission_search
+        description: Search admission fit for supplied applicant facts.
+      - code: recommendation
+        description: Recommend programs using explicit criteria.
+      - code: unknown
+        description: The request cannot be resolved safely.
+    input_fields:
+      - text
+    output_schema:
+      fields:
+        - intent
+        - confidence
+      allowed_values:
+        - catalog_search
+        - comparison
+        - admission_search
+        - recommendation
+        - unknown
+      additional_properties: false
+    deterministic_fallback: rule_based_intent
+    timeout_class: interactive
+    max_input_chars: 2000
+    pii_policy: sanitized
+    evidence_required: false
+    evaluation_dataset_key: decision.intent.v1
+
+  - definition_id: metric.v1
+    kind: metric
+    operation: resolve_metric
+    version: metric-definition.v1
+    instructions: Resolve a user phrase to an allow-listed metric candidate.
+    criteria:
+      - Select only from the supplied candidate metric codes.
+      - Never invent a metric or a SQL expression.
+    input_fields:
+      - text
+      - candidates
+    output_schema:
+      fields:
+        - metric_code
+        - candidates
+        - confidence
+      additional_properties: false
+    deterministic_fallback: rule_based_metric
+    timeout_class: interactive
+    max_input_chars: 2000
+    pii_policy: sanitized
+    evidence_required: true
+    evaluation_dataset_key: decision.metric.v1
+
+  - definition_id: next-action.v1
+    kind: next_action
+    operation: choose_next_action
+    version: next-action-definition.v2
+    instructions: >-
+      Select the next action from the typed state and available actions. If
+      intent is compare_programs and next_action is execute_query, choose
+      compare; this asks the application to execute the same typed query and
+      render it as a comparison. For another executable intent, choose
+      execute_query. Choose ask_clarification only when a required slot is
+      missing or unresolved. Never choose a report or mini-app action unless
+      that capability is explicitly available.
+    criteria:
+      - Choose only from available actions.
+      - For a ready compare_programs request, select compare rather than execute_query.
+      - Ask only when missing or unresolved information prevents a correct result.
+      - Do not choose build_report or open_mini_app unless the capability is explicitly available.
+    input_fields:
+      - session
+      - available_actions
+      - capabilities
+    output_schema:
+      fields:
+        - action
+        - question
+        - options
+        - reason
+      allowed_values:
+        - ask_clarification
+        - execute_query
+        - show_result
+        - compare
+        - build_report
+        - open_mini_app
+      additional_properties: false
+    deterministic_fallback: rule_based_next_action
+    timeout_class: interactive
+    max_input_chars: 8000
+    pii_policy: sanitized
+    evidence_required: true
+    evaluation_dataset_key: decision.next_action.v2
+
+  - definition_id: presentation.v1
+    kind: presentation
+    operation: choose_presentation
+    version: presentation-definition.v1
+    instructions: Choose an allow-listed response format and template.
+    criteria:
+      - Choose only a supported format and template.
+      - Do not generate UI code or arbitrary template names.
+    input_fields:
+      - response_request
+      - capabilities
+    output_schema:
+      fields:
+        - response_format
+        - template
+        - confidence
+      allowed_values:
+        - text
+        - image
+        - image_collection
+        - pdf
+        - mini_app
+      additional_properties: false
+    deterministic_fallback: rule_based_presentation
+    timeout_class: interactive
+    max_input_chars: 8000
+    pii_policy: sanitized
+    evidence_required: true
+    evaluation_dataset_key: decision.presentation.v1
+
+  - definition_id: semantic-feature.v1
+    kind: semantic_feature
+    operation: classify_semantic_features
+    version: semantic-feature-definition.v1
+    instructions: Propose feature values for a canonical discipline candidate.
+    criteria:
+      - Return only registered feature codes.
+      - Treat the result as inferred semantics, never as an official source fact.
+      - Preserve confidence and review status.
+    input_fields:
+      - text
+      - feature_codes
+    output_schema:
+      fields:
+        - values
+        - confidence
+      additional_properties: false
+    deterministic_fallback: rule_based_semantic
+    timeout_class: enrichment
+    max_input_chars: 2000
+    pii_policy: sanitized
+    evidence_required: true
+    evaluation_dataset_key: semantic.discipline-feature.v1
