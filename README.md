@@ -20,7 +20,17 @@ MAX must not import Andromeda Python, database, Jev or provider internals. Backe
 
 ## Local development
 
-See [`apps/max/docs/development.md`](apps/max/docs/development.md) for MAX setup and [`services/andromeda/README.md`](services/andromeda/README.md) for backend prerequisites and fixture-backed operation. Root commands and the combined local stack are maintained here as the monorepo verification tasks are completed.
+See [`apps/max/docs/development.md`](apps/max/docs/development.md) for MAX setup and [`services/andromeda/README.md`](services/andromeda/README.md) for backend prerequisites and fixture-backed operation. From the repository root, use:
+
+```powershell
+python scripts/monorepo.py max
+python scripts/monorepo.py andromeda
+python scripts/monorepo.py contracts
+python scripts/monorepo.py full
+python scripts/monorepo.py e2e
+```
+
+Use `python scripts/monorepo.py stack -d` to start the combined local stack after configuring the environment examples. `full` includes the root Compose configuration check; it does not silently start long-running services or require PostgreSQL/provider credentials.
 
 Use fixture-backed data for deterministic local checks. Live university sources and paid AI providers are optional and are not substitutes for the deterministic test suite. Never commit `.env` files, tokens, cookies, MAX update payloads or applicant profiles.
 
