@@ -74,6 +74,7 @@ from andromeda.modules.presentation.contracts.policy import (
     ResponseRequest,
 )
 from andromeda.modules.presentation.contracts.verbalization import (
+    ResponseNaturalizerPort,
     ResponseVerbalizerPort,
 )
 from andromeda.modules.presentation.services.envelope_builder import (
@@ -111,6 +112,7 @@ class AssistantService:
         admission_benefit_policy_evaluator: AdmissionBenefitPolicyEvaluator
         | None = None,
         knowledge_verbalizer: ResponseVerbalizerPort | None = None,
+        knowledge_naturalizer: ResponseNaturalizerPort | None = None,
         knowledge_policy_enabled: bool = False,
         ttl_seconds: int = 86_400,
     ) -> None:
@@ -127,7 +129,7 @@ class AssistantService:
         self._admission_benefit_policy_evaluator = admission_benefit_policy_evaluator
         self._knowledge_policy_enabled = knowledge_policy_enabled
         self._knowledge_response_renderer = KnowledgeResponseRenderer(
-            knowledge_verbalizer
+            knowledge_verbalizer, knowledge_naturalizer
         )
         self._ttl_seconds = ttl_seconds
 
@@ -684,6 +686,17 @@ class AssistantService:
         rendered = self._knowledge_response_renderer.render(
             knowledge,
             unverified_fallback=(answer.status is PolicyAnswerStatus.OUTSIDE_COVERAGE),
+            rate_limit_key=session.owner_scope.owner_key,
+            allow_naturalization=(
+                query_context is not None
+                and session.applicant_admission_context is None
+                and query_context.focus
+                in {
+                    PolicyQueryFocus.STATUS,
+                    PolicyQueryFocus.CHANGE,
+                    PolicyQueryFocus.HISTORY,
+                }
+            ),
         )
         response = ResponseEnvelope(
             response_type=ResponseFormat.TEXT,

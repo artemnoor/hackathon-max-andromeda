@@ -5,9 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
+from collections import Counter
 from datetime import datetime
 
 from andromeda.modules.presentation.contracts.knowledge_response import (
+    ConsideredRuleView,
     KnowledgeResponseSection,
     ResolutionExplanation,
     ResponseActionability,
@@ -16,6 +19,7 @@ from andromeda.modules.presentation.contracts.knowledge_response import (
     ResponseDiffStatus,
     ResponseMode,
     ResponseResolutionState,
+    ResponseRuleReference,
     ResponseScopeKind,
     ResponseSourceReliability,
     ResponseUncertainty,
@@ -25,25 +29,46 @@ from andromeda.modules.presentation.contracts.verbalization import (
     KnowledgeResponseRenderResult,
     PresentationSectionKind,
     PresentationSectionRef,
+    ResponseNaturalizationReference,
+    ResponseNaturalizationReferenceKind,
+    ResponseNaturalizationRequest,
+    ResponseNaturalizationResult,
+    ResponseNaturalizationSection,
+    ResponseNaturalizerPort,
     ResponseVerbalizationPlan,
     ResponseVerbalizationRequest,
     ResponseVerbalizerPort,
+    section_reference_id,
 )
 
 logger = logging.getLogger("andromeda.presentation.knowledge")
+_TOKEN_PATTERN = re.compile(r"https?://[^\s)]+|[\w]+", re.IGNORECASE | re.UNICODE)
+_PROTECTED_TOKEN_PATTERN = re.compile(
+    r"https?://[^\s)]+|\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b|"
+    r"\b\d{4}\b|\b\d+(?:[.,]\d+)?\b|"
+    r"\b(?:не|нет|нельзя|только|лишь|может|могут|обязан|обязаны)\b",
+    re.IGNORECASE | re.UNICODE,
+)
 
 
 class KnowledgeResponseRenderer:
     """Render verified content; an optional port only orders safe section references."""
 
-    def __init__(self, verbalizer: ResponseVerbalizerPort | None = None) -> None:
+    def __init__(
+        self,
+        verbalizer: ResponseVerbalizerPort | None = None,
+        naturalizer: ResponseNaturalizerPort | None = None,
+    ) -> None:
         self._verbalizer = verbalizer
+        self._naturalizer = naturalizer
 
     def render(
         self,
         response: KnowledgeResponseSection,
         *,
         unverified_fallback: bool = False,
+        rate_limit_key: str | None = None,
+        allow_naturalization: bool = True,
     ) -> KnowledgeResponseRenderResult:
         if unverified_fallback and response.status.value != "outside_coverage":
             raise ValueError("unverified fallback is restricted to outside coverage")
@@ -69,6 +94,35 @@ class KnowledgeResponseRenderer:
         text = _bounded_text(
             "\n\n".join(blocks[section_id][1] for section_id in ordered_ids)
         )
+        if (
+            self._naturalizer is not None
+            and rate_limit_key
+            and not unverified_fallback
+            and allow_naturalization
+            and response.actionability
+            in {
+                ResponseActionability.NOT_APPLICABLE,
+                ResponseActionability.FUTURE_ONLY,
+                ResponseActionability.INFORMATIONAL,
+            }
+            and len(text) >= 240
+        ):
+            try:
+                naturalization_request = _naturalization_request(
+                    response, blocks, ordered_ids
+                )
+                result = self._naturalizer.naturalize(
+                    naturalization_request, rate_limit_key=rate_limit_key
+                )
+                naturalized = _validated_naturalization(result, naturalization_request)
+                if naturalized is not None:
+                    text = naturalized
+                    mode = ResponseMode.SOURCE_BACKED_VERBALIZATION
+            except Exception as error:  # noqa: BLE001 - optional port must fail closed
+                logger.warning(
+                    "knowledge_response_naturalizer_fallback error_type=%s",
+                    type(error).__name__,
+                )
         if unverified_fallback:
             mode = ResponseMode.UNVERIFIED_FALLBACK
         return KnowledgeResponseRenderResult(text=text, response_mode=mode)
@@ -202,6 +256,210 @@ def _validated_order(
     ):
         raise ValueError("verbalizer cannot move the evidence section")
     return actual
+
+
+def _naturalization_reference(
+    kind: ResponseNaturalizationReferenceKind,
+    label: str,
+    value: str | None,
+) -> ResponseNaturalizationReference:
+    canonical = json.dumps(
+        (kind.value, label, value), ensure_ascii=False, separators=(",", ":")
+    )
+    reference_id = "reference:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return ResponseNaturalizationReference(
+        reference_id=reference_id,
+        kind=kind,
+        label=label[:256] or kind.value,
+        value=value[:512] if value is not None else None,
+    )
+
+
+def _naturalization_request(
+    response: KnowledgeResponseSection,
+    blocks: dict[str, tuple[PresentationSectionRef, str]],
+    ordered_ids: tuple[str, ...],
+) -> ResponseNaturalizationRequest:
+    references_by_kind: dict[
+        ResponseNaturalizationReferenceKind, dict[str, ResponseNaturalizationReference]
+    ] = {kind: {} for kind in ResponseNaturalizationReferenceKind}
+
+    def add_reference(
+        kind: ResponseNaturalizationReferenceKind,
+        label: str,
+        value: str | None,
+    ) -> str:
+        reference = _naturalization_reference(kind, label, value)
+        references_by_kind[kind][reference.reference_id] = reference
+        return reference.reference_id
+
+    fact_reference_ids: set[str] = set()
+    for fact in (*response.known_facts, *response.impact_delta):
+        fact_reference_ids.add(
+            add_reference(
+                ResponseNaturalizationReferenceKind.FACT,
+                f"{fact.subject_label + ': ' if fact.subject_label else ''}{fact.label}",
+                f"{fact.value}{' ' + fact.unit if fact.unit else ''}",
+            )
+        )
+    source_reference_ids: set[str] = set()
+    all_evidence = list(response.evidence)
+    for assertion in response.source_assertions:
+        all_evidence.extend(assertion.evidence)
+        if assertion.asserted_value is not None:
+            fact = assertion.asserted_value
+            fact_reference_ids.add(
+                add_reference(
+                    ResponseNaturalizationReferenceKind.FACT,
+                    f"{fact.subject_label + ': ' if fact.subject_label else ''}{fact.label}",
+                    f"{fact.value}{' ' + fact.unit if fact.unit else ''}",
+                )
+            )
+    for evidence in all_evidence:
+        source_reference_ids.add(
+            add_reference(
+                ResponseNaturalizationReferenceKind.SOURCE,
+                evidence.source_name or evidence.source_reference,
+                str(evidence.url),
+            )
+        )
+
+    entity_reference_ids: set[str] = set()
+    for scope in response.affected_scope:
+        entity_reference_ids.add(
+            add_reference(
+                ResponseNaturalizationReferenceKind.ENTITY,
+                scope.scope_kind.value,
+                scope.scope_reference,
+            )
+        )
+
+    policy_reference_ids: set[str] = set()
+
+    def add_rules(
+        rules: tuple[ResponseRuleReference | ConsideredRuleView, ...],
+    ) -> None:
+        for item in rules:
+            rule = item.rule if isinstance(item, ConsideredRuleView) else item
+            policy_reference_ids.add(
+                add_reference(
+                    ResponseNaturalizationReferenceKind.POLICY,
+                    str(rule.rule_reference),
+                    f"revision={rule.revision};hash={rule.revision_hash};scope={rule.scope_kind.value}:{rule.scope_reference or ''}",
+                )
+            )
+
+    if response.resolution is not None:
+        add_rules(response.resolution.selected_rules)
+        add_rules(response.resolution.considered_rules)
+        for conflict in response.resolution.conflicts:
+            add_rules(conflict.rules)
+        for exception in response.resolution.exceptions:
+            add_rules(exception.rules)
+            if exception.selected_rule is not None:
+                add_rules((exception.selected_rule,))
+    if response.cycle_comparison is not None:
+        for explanation in (
+            response.cycle_comparison.before_resolution,
+            response.cycle_comparison.after_resolution,
+        ):
+            add_rules(explanation.selected_rules)
+            add_rules(explanation.considered_rules)
+    for exception in response.exceptions:
+        add_rules(exception.rules)
+        if exception.selected_rule is not None:
+            add_rules((exception.selected_rule,))
+
+    naturalization_sections: list[ResponseNaturalizationSection] = []
+    for section_id in ordered_ids:
+        ref, text = blocks[section_id]
+        references = {section_reference_id(ref.section_id)}
+        if ref.kind in {
+            PresentationSectionKind.SOURCE_ASSERTIONS,
+            PresentationSectionKind.FACTS,
+            PresentationSectionKind.IMPACT,
+        }:
+            references.update(fact_reference_ids)
+        if ref.kind in {
+            PresentationSectionKind.SOURCE_ASSERTIONS,
+            PresentationSectionKind.EVIDENCE,
+        }:
+            references.update(source_reference_ids)
+        if ref.kind is PresentationSectionKind.SCOPE:
+            references.update(entity_reference_ids)
+        if ref.kind in {
+            PresentationSectionKind.RESOLUTION,
+            PresentationSectionKind.CYCLE_COMPARISON,
+            PresentationSectionKind.EXCEPTIONS,
+        }:
+            references.update(policy_reference_ids)
+        if len(references) > 64:
+            raise ValueError("naturalization section reference limit exceeded")
+        naturalization_sections.append(
+            ResponseNaturalizationSection(
+                section=ref,
+                text=text,
+                allowed_reference_ids=tuple(sorted(references)),
+            )
+        )
+    allowed_references = tuple(
+        reference
+        for by_kind in references_by_kind.values()
+        for reference in by_kind.values()
+    )
+    return ResponseNaturalizationRequest(
+        sections=tuple(naturalization_sections),
+        allowed_references=allowed_references,
+        required_section_order=ordered_ids,
+    )
+
+
+def _validated_naturalization(
+    result: ResponseNaturalizationResult,
+    request: ResponseNaturalizationRequest,
+) -> str | None:
+    if not isinstance(result, ResponseNaturalizationResult):
+        return None
+    expected_order = request.required_section_order
+    if tuple(item.section_id for item in result.sections) != expected_order:
+        return None
+    input_by_id = {item.section.section_id: item for item in request.sections}
+    output_text: list[str] = []
+    protected_total = 0
+    for output in result.sections:
+        source = input_by_id[output.section_id]
+        allowed_references = set(source.allowed_reference_ids)
+        if not set(output.reference_ids).issubset(allowed_references):
+            return None
+        if section_reference_id(output.section_id) not in output.reference_ids:
+            return None
+        source_tokens = Counter(
+            token.casefold() for token in _TOKEN_PATTERN.findall(source.text)
+        )
+        output_tokens = Counter(
+            token.casefold() for token in _TOKEN_PATTERN.findall(output.text)
+        )
+        if source_tokens != output_tokens:
+            return None
+        source_protected = Counter(
+            token.casefold() for token in _PROTECTED_TOKEN_PATTERN.findall(source.text)
+        )
+        output_protected = Counter(
+            token.casefold() for token in _PROTECTED_TOKEN_PATTERN.findall(output.text)
+        )
+        if source_protected != output_protected:
+            return None
+        if any(
+            marker in output.text.casefold() for marker in ("<script", "```", "[link")
+        ):
+            return None
+        if len(output.text) > min(4_000, len(source.text) * 2 + 64):
+            return None
+        protected_total += len(output.text)
+        output_text.append(output.text)
+    if protected_total > 20_000:
+        return None
+    return _bounded_text("\n\n".join(output_text))
 
 
 def _status_text(

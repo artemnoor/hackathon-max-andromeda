@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from andromeda.infrastructure.adapters.policy_approval_conflicts import (
     SqlAlchemyPolicyApprovalConflictReader,
 )
+from andromeda.infrastructure.adapters.polza_naturalizer import PolzaNaturalizer
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.jev.runtime import (
     build_admission_candidate_selector,
@@ -232,6 +233,9 @@ from andromeda.modules.policy.services.ports import (
 from andromeda.modules.policy.services.sandbox_evaluator import (
     PolicyHypotheticalSandbox,
 )
+from andromeda.modules.presentation.contracts.verbalization import (
+    ResponseNaturalizerPort,
+)
 from andromeda.modules.presentation.services.rule_response_policy import (
     RuleBasedResponsePolicy,
 )
@@ -305,6 +309,12 @@ class AndromedaContainer:
         default=None, init=False, repr=False, compare=False
     )
     _admission_candidate_selector_built: bool = field(
+        default=False, init=False, repr=False, compare=False
+    )
+    _presentation_naturalizer_cache: ResponseNaturalizerPort | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _presentation_naturalizer_built: bool = field(
         default=False, init=False, repr=False, compare=False
     )
 
@@ -912,6 +922,7 @@ class AndromedaContainer:
             admission_benefit_policy_evaluator=self.admission_benefits_policy_evaluator(
                 session
             ),
+            knowledge_naturalizer=self.presentation_naturalizer(),
             knowledge_policy_enabled=self.settings.knowledge_policy_assistant_enabled,
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
@@ -923,6 +934,24 @@ class AndromedaContainer:
         cached_policy = self._decision_policy_cache
         assert cached_policy is not None
         return cached_policy
+
+    def presentation_naturalizer(self) -> ResponseNaturalizerPort | None:
+        """Compose an optional prose provider without making it a core dependency."""
+
+        if (
+            not self.settings.presentation_llm_enabled
+            or not self.settings.polza_api_key
+        ):
+            return None
+        if not self._presentation_naturalizer_built:
+            naturalizer: ResponseNaturalizerPort = PolzaNaturalizer(self.settings)
+            object.__setattr__(self, "_presentation_naturalizer_cache", naturalizer)
+            object.__setattr__(self, "_presentation_naturalizer_built", True)
+            logger.info(
+                "presentation_naturalizer_composed provider=polza model=%s",
+                self.settings.deepseek_model,
+            )
+        return self._presentation_naturalizer_cache
 
 
 def build_container(

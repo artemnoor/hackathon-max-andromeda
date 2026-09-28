@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import pytest
-
 from andromeda.infrastructure.config import (
     Settings,
     database_dialect,
@@ -34,6 +33,57 @@ def test_knowledge_policy_assistant_rollout_flag_is_explicit(
     settings = Settings.from_environment()
 
     assert settings.knowledge_policy_assistant_enabled is True
+
+
+def test_presentation_model_is_disabled_and_optional_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.delenv("PRESENTATION_LLM_ENABLED", raising=False)
+    monkeypatch.delenv("POLZA_AI_API_KEY", raising=False)
+
+    settings = Settings.from_environment()
+
+    assert settings.presentation_llm_enabled is False
+    assert settings.polza_api_key is None
+    assert settings.deepseek_model == "deepseek/deepseek-v4.1-flash"
+    assert "polza_api_key" not in repr(settings)
+
+
+def test_presentation_model_can_be_enabled_without_a_key_and_remains_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("PRESENTATION_LLM_ENABLED", "true")
+    monkeypatch.delenv("POLZA_AI_API_KEY", raising=False)
+
+    settings = Settings.from_environment()
+
+    assert settings.presentation_llm_enabled is True
+    assert settings.polza_api_key is None
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "match"),
+    [
+        ("POLZA_API_BASE_URL", "https://attacker.invalid/api/v1", "must be https"),
+        ("POLZA_API_BASE_URL", "https://polza.ai/api/v1?key=secret", "must be https"),
+        ("DEEPSEEK_MODEL", "other-provider/model", "DeepSeek model identifier"),
+    ],
+)
+def test_presentation_provider_configuration_is_allowlisted_and_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    value: str,
+    match: str,
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("PRESENTATION_LLM_ENABLED", "true")
+    monkeypatch.setenv("POLZA_AI_API_KEY", "disposable-provider-test-key")
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=match):
+        Settings.from_environment()
 
 
 def test_development_requires_postgresql(monkeypatch: pytest.MonkeyPatch) -> None:

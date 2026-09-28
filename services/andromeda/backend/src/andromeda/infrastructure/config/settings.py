@@ -26,6 +26,13 @@ DEFAULT_JEV_TIMEOUT_SECONDS = 2.0
 DEFAULT_JEV_MAX_ROWS = 100
 DEFAULT_JEV_MAX_CHARS = 32_000
 DEFAULT_JEV_MAX_CONCURRENCY = 4
+DEFAULT_POLZA_API_BASE_URL = "https://polza.ai/api/v1"
+DEFAULT_DEEPSEEK_MODEL = "deepseek/deepseek-v4.1-flash"
+DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS = 3.5
+DEFAULT_PRESENTATION_LLM_MAX_TOKENS = 1200
+DEFAULT_PRESENTATION_LLM_MAX_CONCURRENCY = 2
+DEFAULT_PRESENTATION_LLM_RATE_WINDOW_SECONDS = 60
+DEFAULT_PRESENTATION_LLM_RATE_LIMIT_MAX = 3
 VALID_ENVIRONMENTS = frozenset(("test", "development", "staging", "production"))
 VALID_SAMESITE_VALUES = frozenset(("lax", "strict", "none"))
 JEV_ALLOWED_ENDPOINTS = frozenset(("https://api.typesafe.ai", "https://polza.ai/api"))
@@ -90,6 +97,17 @@ class Settings:
     jev_max_chars: int = DEFAULT_JEV_MAX_CHARS
     jev_timeout_seconds: float = DEFAULT_JEV_TIMEOUT_SECONDS
     jev_max_concurrency: int = DEFAULT_JEV_MAX_CONCURRENCY
+    presentation_llm_enabled: bool = False
+    polza_api_key: str | None = field(default=None, repr=False)
+    polza_api_base_url: str = DEFAULT_POLZA_API_BASE_URL
+    deepseek_model: str = DEFAULT_DEEPSEEK_MODEL
+    presentation_llm_timeout_seconds: float = DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS
+    presentation_llm_max_tokens: int = DEFAULT_PRESENTATION_LLM_MAX_TOKENS
+    presentation_llm_max_concurrency: int = DEFAULT_PRESENTATION_LLM_MAX_CONCURRENCY
+    presentation_llm_rate_window_seconds: int = (
+        DEFAULT_PRESENTATION_LLM_RATE_WINDOW_SECONDS
+    )
+    presentation_llm_rate_limit_max: int = DEFAULT_PRESENTATION_LLM_RATE_LIMIT_MAX
 
     @classmethod
     def from_environment(cls, database_url: str | None = None) -> Settings:
@@ -275,8 +293,49 @@ class Settings:
             jev_max_concurrency=_bounded_int_from_environment(
                 "JEV_MAX_CONCURRENCY", DEFAULT_JEV_MAX_CONCURRENCY, 1, 32
             ),
+            presentation_llm_enabled=_bool_from_environment(
+                "PRESENTATION_LLM_ENABLED", False
+            ),
+            polza_api_key=_optional_secret_from_environment("POLZA_AI_API_KEY"),
+            polza_api_base_url=os.environ.get(
+                "POLZA_API_BASE_URL", DEFAULT_POLZA_API_BASE_URL
+            ).strip(),
+            deepseek_model=os.environ.get(
+                "DEEPSEEK_MODEL", DEFAULT_DEEPSEEK_MODEL
+            ).strip(),
+            presentation_llm_timeout_seconds=_bounded_float_from_environment(
+                "PRESENTATION_LLM_TIMEOUT_SECONDS",
+                DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS,
+                0.2,
+                8.0,
+            ),
+            presentation_llm_max_tokens=_bounded_int_from_environment(
+                "PRESENTATION_LLM_MAX_TOKENS",
+                DEFAULT_PRESENTATION_LLM_MAX_TOKENS,
+                100,
+                2048,
+            ),
+            presentation_llm_max_concurrency=_bounded_int_from_environment(
+                "PRESENTATION_LLM_MAX_CONCURRENCY",
+                DEFAULT_PRESENTATION_LLM_MAX_CONCURRENCY,
+                1,
+                8,
+            ),
+            presentation_llm_rate_window_seconds=_bounded_int_from_environment(
+                "PRESENTATION_LLM_RATE_WINDOW_SECONDS",
+                DEFAULT_PRESENTATION_LLM_RATE_WINDOW_SECONDS,
+                30,
+                3600,
+            ),
+            presentation_llm_rate_limit_max=_bounded_int_from_environment(
+                "PRESENTATION_LLM_RATE_LIMIT_MAX",
+                DEFAULT_PRESENTATION_LLM_RATE_LIMIT_MAX,
+                1,
+                10,
+            ),
         )
         _validate_jev_settings(settings)
+        _validate_presentation_settings(settings)
         _validate_cookie_settings(
             settings.profile_cookie_name,
             settings.profile_cookie_samesite,
@@ -321,6 +380,12 @@ class Settings:
             settings.jev_model,
             settings.jev_calibration_mode,
             settings.jev_api_key is not None,
+        )
+        logger.debug(
+            "presentation_llm_settings_loaded enabled=%s provider=polza model=%s key_configured=%s",
+            settings.presentation_llm_enabled,
+            settings.deepseek_model,
+            settings.polza_api_key is not None,
         )
         return settings
 
@@ -537,6 +602,15 @@ def _validate_jev_settings(settings: Settings) -> None:
             raise ValueError(
                 "Jev admission resolution must remain disabled in test environment"
             )
+
+
+def _validate_presentation_settings(settings: Settings) -> None:
+    if not settings.presentation_llm_enabled or settings.polza_api_key is None:
+        return
+    if settings.polza_api_base_url.rstrip("/") != DEFAULT_POLZA_API_BASE_URL:
+        raise ValueError("POLZA_API_BASE_URL must be https://polza.ai/api/v1")
+    if re.fullmatch(r"deepseek/[A-Za-z0-9._-]{1,80}", settings.deepseek_model) is None:
+        raise ValueError("DEEPSEEK_MODEL must be a bounded DeepSeek model identifier")
 
 
 def _validate_endpoint(
