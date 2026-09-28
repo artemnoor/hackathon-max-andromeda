@@ -1,9 +1,10 @@
-import type { DeepLinkReference, MaxTransportState, UpdateReservation } from './transport-state.js';
+import type { AndromedaConversationMapping, DeepLinkReference, MaxTransportState, UpdateReservation } from './transport-state.js';
 import { AppError, ERROR_CODES } from './errors.js';
 import {
   createLeaseToken,
   hashTransportKey,
   validateDeepLinkReference,
+  validateAndromedaConversationMapping,
   validateLeaseToken,
   validateNonce,
   validateStateKey,
@@ -13,12 +14,14 @@ import {
 type ExpiringCount = { count: number; expiresAt: number };
 type UpdateState = { status: 'lease'; token: string; expiresAt: number } | { status: 'done'; expiresAt: number };
 type ExpiringReference = { value: DeepLinkReference; expiresAt: number };
+type ExpiringAndromedaMapping = { value: AndromedaConversationMapping; expiresAt: number };
 const MAX_MEMORY_ENTRIES = 10_000;
 
 export class MemoryMaxTransportState implements MaxTransportState {
   private readonly windows = new Map<string, ExpiringCount>();
   private readonly updates = new Map<string, UpdateState>();
   private readonly deepLinks = new Map<string, ExpiringReference>();
+  private readonly andromedaMappings = new Map<string, ExpiringAndromedaMapping>();
   private operations = 0;
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -98,12 +101,70 @@ export class MemoryMaxTransportState implements MaxTransportState {
     return current.value;
   }
 
+  async reserveConversationTurn(userKey: string, leaseTtlSeconds: number): Promise<UpdateReservation> {
+    const lockKey = conversationLockKey(userKey);
+    return this.reserveUpdate(lockKey, leaseTtlSeconds);
+  }
+
+  async releaseConversationTurn(userKey: string, leaseToken: string): Promise<boolean> {
+    return this.releaseUpdate(conversationLockKey(userKey), leaseToken);
+  }
+
+  async getAndromedaMapping(userKey: string): Promise<AndromedaConversationMapping | undefined> {
+    const checkedKey = hashedUserKey(userKey);
+    this.maintain(this.now());
+    const current = this.andromedaMappings.get(checkedKey);
+    if (!current || current.expiresAt <= this.now()) {
+      this.andromedaMappings.delete(checkedKey);
+      return undefined;
+    }
+    return validateAndromedaConversationMapping(current.value);
+  }
+
+  async saveAndromedaMapping(
+    userKey: string,
+    leaseToken: string,
+    mapping: AndromedaConversationMapping,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    const userHash = hashedUserKey(userKey);
+    const checkedToken = validateLeaseToken(leaseToken);
+    const checkedMapping = validateAndromedaConversationMapping(mapping);
+    validateTtl(ttlSeconds, 60, 2_592_000, 'ttlSeconds');
+    const now = this.now();
+    this.maintain(now);
+    const lease = this.updates.get(conversationLockStorageKey(userKey));
+    if (!lease || lease.status !== 'lease' || lease.token !== checkedToken || lease.expiresAt <= now) return false;
+    if (!this.andromedaMappings.has(userHash)) this.ensureCapacity(now);
+    this.andromedaMappings.set(userHash, {
+      value: checkedMapping,
+      expiresAt: now + ttlSeconds * 1000,
+    });
+    return true;
+  }
+
+  async resetAndromedaQuerySession(
+    userKey: string,
+    leaseToken: string,
+    profileCookie: string,
+    lastActivityAt: number,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    return this.saveAndromedaMapping(
+      userKey,
+      leaseToken,
+      { version: 1, profileCookie, lastActivityAt },
+      ttlSeconds,
+    );
+  }
+
   private maintain(now: number): void {
     this.operations += 1;
     if (this.operations % 128 !== 0 && this.entryCount() < MAX_MEMORY_ENTRIES) return;
     for (const [key, entry] of this.windows) if (entry.expiresAt <= now) this.windows.delete(key);
     for (const [key, entry] of this.updates) if (entry.expiresAt <= now) this.updates.delete(key);
     for (const [key, entry] of this.deepLinks) if (entry.expiresAt <= now) this.deepLinks.delete(key);
+    for (const [key, entry] of this.andromedaMappings) if (entry.expiresAt <= now) this.andromedaMappings.delete(key);
   }
 
   private ensureCapacity(now: number): void {
@@ -114,6 +175,11 @@ export class MemoryMaxTransportState implements MaxTransportState {
   }
 
   private entryCount(): number {
-    return this.windows.size + this.updates.size + this.deepLinks.size;
+    return this.windows.size + this.updates.size + this.deepLinks.size + this.andromedaMappings.size;
   }
 }
+
+const hashedUserKey = (userKey: string): string => hashTransportKey(validateStateKey(userKey));
+const conversationLockKey = (userKey: string): string => `conversation:${hashedUserKey(userKey)}`;
+const conversationLockStorageKey = (userKey: string): string =>
+  hashTransportKey(validateStateKey(conversationLockKey(userKey)));

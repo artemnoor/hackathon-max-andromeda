@@ -69,6 +69,7 @@ test('polling processes updates sequentially, suppresses duplicates, and preserv
 test('protected bot runtime refuses local memory state', () => {
   const protectedConfig = loadConfig({
     NODE_ENV: 'production',
+    ANDROMEDA_API_BASE_URL: 'https://api.example.org',
     MAX_BOT_TOKEN: 'test-token-value',
     MAX_TRANSPORT: 'webhook',
     MAX_WEBHOOK_DOMAIN: 'bot.example.org',

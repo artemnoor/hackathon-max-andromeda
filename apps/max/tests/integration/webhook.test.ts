@@ -101,6 +101,59 @@ test('MAX webhook runtime returns success only after processing and retains remo
   assert.equal(unsubscribes, 0, 'shutdown must not remove an externally owned MAX subscription');
 });
 
+test('MAX platform adapter converts only typed message buttons into a native keyboard attachment', async (t) => {
+  const port = await portAvailable();
+  let delivered: unknown[] | undefined;
+  const api: Record<string, unknown> = {
+    getMyInfo: async () => ({ user_id: 99, name: 'bot', first_name: 'bot', username: 'bot', is_bot: true, last_activity_time: 1 }),
+    setMyCommands: async () => ({ commands: [] }),
+    getSubscriptions: async () => [{ url: 'https://localhost/max/webhook' }],
+    subscribe: async () => ({ success: true }),
+    sendMessageToChat: async (...args: unknown[]) => { delivered = args; return {}; },
+  };
+  const runtime = createMaxBot({
+    config: createWebhookConfig(port),
+    logger: createLogger({ level: 'silent' }),
+    state: new MemoryMaxTransportState(),
+    createSdkBot: factoryFor(api),
+    handleUpdate: async () => ({
+      kind: 'chat',
+      text: 'Выберите уточнение',
+      buttons: [[{ text: '2028' }, { text: '2029' }]],
+    }),
+  });
+  await runtime.start();
+  t.after(() => runtime.stop());
+
+  const started = JSON.stringify({
+    update_type: 'bot_started',
+    timestamp: 1_700_000_002,
+    chat_id: 77,
+    user: { user_id: 42 },
+  });
+  const result = await fetch('http://127.0.0.1:' + port + '/max/webhook', {
+    method: 'POST',
+    headers,
+    body: started,
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(delivered, [
+    77,
+    'Выберите уточнение',
+    {
+      attachments: [{
+        type: 'inline_keyboard',
+        payload: {
+          buttons: [[
+            { type: 'message', text: '2028' },
+            { type: 'message', text: '2029' },
+          ]],
+        },
+      }],
+    },
+  ]);
+});
+
 test('webhook Redis outage fails closed with retryable response and does not run handler', async (t) => {
   const port = await portAvailable();
   let handlerCalls = 0;
@@ -111,6 +164,11 @@ test('webhook Redis outage fails closed with retryable response and does not run
     releaseUpdate: async () => false,
     storeDeepLink: async () => false,
     consumeDeepLink: async () => undefined,
+    reserveConversationTurn: async () => { throw new AppError(ERROR_CODES.DEPENDENCY_UNAVAILABLE, 503); },
+    releaseConversationTurn: async () => false,
+    getAndromedaMapping: async () => undefined,
+    saveAndromedaMapping: async () => false,
+    resetAndromedaQuerySession: async () => false,
   };
   const api: Record<string, unknown> = {
     getMyInfo: async () => ({ user_id: 99, name: 'bot', first_name: 'bot', username: 'bot', is_bot: true, last_activity_time: 1 }),

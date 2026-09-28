@@ -14,6 +14,9 @@ import { normalizeMaxUpdate, type MaxUpdate } from '../bot/update.js';
 import { createMaxApiFetch, MaxApiClient } from '../client/api-fetch.js';
 import { MaxOutboundRateLimiter } from '../client/rate-limiter.js';
 import { withWebhookGuard } from '../webhook/guard.js';
+import { AndromedaApiClient } from '../client/andromeda-api.js';
+import { createAssistantInteraction } from '../bot/assistant.js';
+import type { MaxChatMessage, MaxMessageButton } from '../bot/response-renderer.js';
 
 export const DEFAULT_ALLOWED_UPDATES = [
   'bot_started', 'message_created', 'message_callback',
@@ -29,9 +32,10 @@ export type MaxPlatform = Pick<Bot, 'api'> & { botInfo?: BotInfo };
 export type MaxSdkFactory = (token: string, options: ClientOptions) => MaxPlatform;
 export type MaxBotDependencies = Readonly<{
   config: Pick<AppConfig,
-    'maxBotToken' | 'maxApiBaseUrl' | 'transport' | 'isProtected'
+    'maxBotToken' | 'maxApiBaseUrl' | 'transport' | 'isProtected' | 'nodeEnv'
     | 'webhookDomain' | 'webhookPort' | 'webhookPath' | 'webhookSecret'
-    | 'redisUrl' | 'logLevel'>;
+    | 'redisUrl' | 'logLevel' | 'andromedaApiBaseUrl' | 'andromedaProfileCookieName'
+    | 'andromedaApiTimeoutMs' | 'andromedaProfileTtlSeconds' | 'andromedaQuerySessionTtlSeconds'>;
   logger: Logger;
   state?: MaxTransportState;
   handleUpdate?: (update: MaxUpdate) => Promise<MaxBotReply | undefined>;
@@ -103,7 +107,20 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
   const state = dependencies.state ?? (dependencies.config.isProtected
     ? (() => { throw new ConfigError('REDIS_URL', 'protected', 'Redis-backed transport state must be composed before Bot startup'); })()
     : new MemoryMaxTransportState());
-  const handleUpdate = dependencies.handleUpdate ?? createMaxUpdateHandler();
+  const andromedaClient = new AndromedaApiClient({
+    baseUrl: dependencies.config.andromedaApiBaseUrl,
+    environment: dependencies.config.nodeEnv,
+    profileCookieName: dependencies.config.andromedaProfileCookieName,
+    timeoutMs: dependencies.config.andromedaApiTimeoutMs,
+    profileCookieSecure: dependencies.config.isProtected,
+    logger: logger.child({ component: 'andromeda.api' }),
+  });
+  const assistant = createAssistantInteraction({
+    api: andromedaClient,
+    state,
+    config: dependencies.config,
+  });
+  const handleUpdate = dependencies.handleUpdate ?? createMaxUpdateHandler({ assistant });
   const apiClient = new MaxApiClient({
     limiter: new MaxOutboundRateLimiter({ state }),
     logger: logger.child({ component: 'max.api' }),
@@ -121,21 +138,35 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
   let started = false;
   let stopping = false;
 
+  const toAttachments = (buttons: readonly (readonly MaxMessageButton[])[]) => [{
+    type: 'inline_keyboard' as const,
+    payload: {
+      buttons: buttons.map((row) => row.map((button) => ({ type: 'message' as const, text: button.text }))),
+    },
+  }];
+  const sendChatMessage = async (update: MaxUpdate, message: MaxChatMessage): Promise<void> => {
+    const extra = message.buttons ? { attachments: toAttachments(message.buttons) } : undefined;
+    if (update.chatId !== undefined) {
+      await platform.api.sendMessageToChat(update.chatId, message.text, extra);
+      return;
+    }
+    if ('userId' in update && update.userId !== undefined) {
+      await platform.api.sendMessageToUser(update.userId, message.text, extra);
+      return;
+    }
+    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 500, undefined, { operation: 'max_reply_target' });
+  };
   const deliver = async (update: MaxUpdate, reply: MaxBotReply | undefined): Promise<void> => {
     if (!reply) return;
     if (reply.kind === 'callback') {
       await platform.api.answerOnCallback(reply.callbackId, { message: { text: reply.text } });
       return;
     }
-    if (update.chatId !== undefined) {
-      await platform.api.sendMessageToChat(update.chatId, reply.text);
+    if (reply.kind === 'batch') {
+      for (const message of reply.messages) await sendChatMessage(update, message);
       return;
     }
-    if ('userId' in update && update.userId !== undefined) {
-      await platform.api.sendMessageToUser(update.userId, reply.text);
-      return;
-    }
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 500, undefined, { operation: 'max_reply_target' });
+    await sendChatMessage(update, reply);
   };
 
   const processUpdate = async (context: Readonly<{ updateType: string; update: unknown }>): Promise<void> => {

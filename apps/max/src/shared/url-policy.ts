@@ -2,6 +2,8 @@ import { isIP } from 'node:net';
 
 const HOST_LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
 const MAX_API_HOST = 'platform-api2.max.ru';
+const ANDROMEDA_DEVELOPMENT_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'andromeda']);
+const SAFE_PATH_SEGMENT = /^[A-Za-z0-9_-]{1,64}$/u;
 
 export const isSafeHostname = (value: string): boolean => {
   if (value.length < 1 || value.length > 253 || value.endsWith('.')) return false;
@@ -58,4 +60,43 @@ export const isProductionOrigin = (value: string): boolean => {
   const parsed = new URL(origin);
   if (parsed.port) return false;
   return isPublicHostname(parsed.hostname);
+};
+
+export const normalizeAndromedaApiBaseUrl = (
+  value: string,
+  environment: 'development' | 'test' | 'staging' | 'production',
+): string | undefined => {
+  if (value.length < 1 || value.length > 2_048 || value.includes('\\')) return undefined;
+  const authority = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^/?#]*/u)?.[0];
+  if (!authority) return undefined;
+  const rawPath = value.slice(authority.length).split(/[?#]/u, 1)[0] ?? '';
+  if (rawPath.includes('%') || rawPath.includes('\\') || rawPath.includes('//')
+    || rawPath.split('/').some((segment) => segment === '.' || segment === '..')) return undefined;
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/gu, '');
+    if (!['http:', 'https:'].includes(url.protocol)
+      || !hostname
+      || url.username
+      || url.password
+      || url.search
+      || url.hash) return undefined;
+
+    const path = url.pathname.replace(/\/$/u, '');
+    if (path.includes('%') || path.includes('//')) return undefined;
+    const segments = path === '' ? [] : path.slice(1).split('/');
+    if (segments.some((segment) => !SAFE_PATH_SEGMENT.test(segment))) return undefined;
+
+    if (environment === 'staging' || environment === 'production') {
+      if (url.protocol !== 'https:' || url.port || !isPublicHostname(hostname)) return undefined;
+    } else if (url.protocol === 'http:') {
+      if (!ANDROMEDA_DEVELOPMENT_HOSTS.has(hostname)) return undefined;
+    } else if (!isPublicHostname(hostname) && !ANDROMEDA_DEVELOPMENT_HOSTS.has(hostname)) {
+      return undefined;
+    }
+
+    return `${url.origin}${path}`;
+  } catch {
+    return undefined;
+  }
 };

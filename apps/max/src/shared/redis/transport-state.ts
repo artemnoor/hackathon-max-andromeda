@@ -1,10 +1,11 @@
 import type { Redis } from 'ioredis';
 
 import { AppError, ERROR_CODES } from '../errors.js';
-import type { DeepLinkReference, MaxTransportState, UpdateReservation } from '../transport-state.js';
+import type { AndromedaConversationMapping, DeepLinkReference, MaxTransportState, UpdateReservation } from '../transport-state.js';
 import {
   createLeaseToken,
   hashTransportKey,
+  validateAndromedaConversationMapping,
   validateDeepLinkReference,
   validateLeaseToken,
   validateNonce,
@@ -15,7 +16,7 @@ import {
 const KEY_PREFIX = 'andromeda:max:v1:';
 const dependencyError = (operation: string, cause?: unknown): AppError =>
   new AppError(ERROR_CODES.DEPENDENCY_UNAVAILABLE, 503, undefined, { operation }, { cause });
-const redisKey = (scope: 'window' | 'update' | 'deeplink', value: string): string => `${KEY_PREFIX}${scope}:${hashTransportKey(value)}`;
+const redisKey = (scope: 'window' | 'update' | 'deeplink' | 'conversation', value: string): string => `${KEY_PREFIX}${scope}:${hashTransportKey(value)}`;
 
 const INCREMENT_WINDOW = `
 local count = redis.call('INCR', KEYS[1])
@@ -56,6 +57,12 @@ local value = redis.call('GET', KEYS[1])
 if not value then return false end
 redis.call('DEL', KEYS[1])
 return value
+`;
+
+const SAVE_ANDROMEDA_MAPPING = `
+if redis.call('GET', KEYS[1]) ~= ('lease:' .. ARGV[1]) then return 0 end
+redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
+return 1
 `;
 
 const parseDeepLinkReference = (value: string): DeepLinkReference => {
@@ -156,4 +163,78 @@ export class RedisMaxTransportState implements MaxTransportState {
       throw dependencyError('consume_deeplink', cause);
     }
   }
+
+  async reserveConversationTurn(userKey: string, leaseTtlSeconds: number): Promise<UpdateReservation> {
+    const checkedUserKey = validateStateKey(userKey);
+    return this.reserveUpdate(conversationLockKey(checkedUserKey), leaseTtlSeconds);
+  }
+
+  async releaseConversationTurn(userKey: string, leaseToken: string): Promise<boolean> {
+    const checkedUserKey = validateStateKey(userKey);
+    return this.releaseUpdate(conversationLockKey(checkedUserKey), leaseToken);
+  }
+
+  async getAndromedaMapping(userKey: string): Promise<AndromedaConversationMapping | undefined> {
+    const checkedUserKey = validateStateKey(userKey);
+    try {
+      const value = await this.redis.get(redisKey('conversation', checkedUserKey));
+      if (value === null) return undefined;
+      if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > 2_048) {
+        throw dependencyError('read_andromeda_mapping_invalid_size');
+      }
+      try {
+        return validateAndromedaConversationMapping(JSON.parse(value) as AndromedaConversationMapping);
+      } catch (cause) {
+        throw dependencyError('read_andromeda_mapping_invalid', cause);
+      }
+    } catch (cause) {
+      if (cause instanceof AppError) throw cause;
+      throw dependencyError('read_andromeda_mapping', cause);
+    }
+  }
+
+  async saveAndromedaMapping(
+    userKey: string,
+    leaseToken: string,
+    mapping: AndromedaConversationMapping,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    const checkedUserKey = validateStateKey(userKey);
+    const checkedToken = validateLeaseToken(leaseToken);
+    const checkedMapping = validateAndromedaConversationMapping(mapping);
+    validateTtl(ttlSeconds, 60, 2_592_000, 'ttlSeconds');
+    try {
+      const result = await this.redis.eval(
+        SAVE_ANDROMEDA_MAPPING,
+        2,
+        redisKey('update', conversationLockKey(checkedUserKey)),
+        redisKey('conversation', checkedUserKey),
+        checkedToken,
+        JSON.stringify(checkedMapping),
+        String(ttlSeconds),
+      );
+      if (result !== 0 && result !== 1) throw dependencyError('save_andromeda_mapping_invalid_result');
+      return result === 1;
+    } catch (cause) {
+      if (cause instanceof AppError) throw cause;
+      throw dependencyError('save_andromeda_mapping', cause);
+    }
+  }
+
+  async resetAndromedaQuerySession(
+    userKey: string,
+    leaseToken: string,
+    profileCookie: string,
+    lastActivityAt: number,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    return this.saveAndromedaMapping(
+      userKey,
+      leaseToken,
+      { version: 1, profileCookie, lastActivityAt },
+      ttlSeconds,
+    );
+  }
 }
+
+const conversationLockKey = (userKey: string): string => `conversation:${hashTransportKey(userKey)}`;

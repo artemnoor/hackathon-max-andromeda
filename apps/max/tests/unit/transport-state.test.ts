@@ -7,6 +7,8 @@ import { MemoryMaxTransportState } from '../../src/shared/memory-transport-state
 const token = 'A'.repeat(32);
 const nonce = 'N'.repeat(22);
 const opaqueId = 'R'.repeat(22);
+const profileCookie = 'P'.repeat(64);
+const querySessionId = `query-session:${'a'.repeat(32)}`;
 
 test('memory fixed window increments atomically and expires at its first deadline', async () => {
   let now = 10_000;
@@ -78,6 +80,88 @@ test('deep links are bounded, expiring, collision-safe, and consumed once', asyn
   assert.equal(await state.storeDeepLink(nonce, reference, 5), true);
   now += 5_001;
   assert.equal(await state.consumeDeepLink(nonce), undefined);
+});
+
+test('Andromeda session mappings are user-scoped, revisioned, and writable only by the current conversation lease', async () => {
+  const state = new MemoryMaxTransportState();
+  const first = await state.reserveConversationTurn('max-user:101', 30);
+  assert.equal(first.status, 'reserved');
+  if (first.status !== 'reserved') assert.fail('expected conversation lease');
+
+  assert.deepEqual(await state.reserveConversationTurn('max-user:101', 30), { status: 'busy' });
+  assert.equal(await state.getAndromedaMapping('max-user:101'), undefined);
+  const mapping = {
+    version: 1 as const,
+    profileCookie,
+    sessionId: querySessionId,
+    revision: 4,
+    lastActivityAt: 50_000,
+  };
+  assert.equal(await state.saveAndromedaMapping('max-user:101', token, mapping, 60), false);
+  assert.equal(await state.saveAndromedaMapping('max-user:101', first.leaseToken, mapping, 60), true);
+  assert.deepEqual(await state.getAndromedaMapping('max-user:101'), mapping);
+  assert.equal(await state.releaseConversationTurn('max-user:101', first.leaseToken), true);
+
+  const second = await state.reserveConversationTurn('max-user:101', 30);
+  assert.equal(second.status, 'reserved');
+  if (second.status !== 'reserved') assert.fail('expected replacement lease');
+  assert.equal(await state.saveAndromedaMapping('max-user:101', first.leaseToken, {
+    ...mapping,
+    revision: 5,
+  }, 60), false);
+  assert.equal(await state.saveAndromedaMapping('max-user:101', second.leaseToken, {
+    ...mapping,
+    revision: 5,
+    lastActivityAt: 60_000,
+  }, 60), true);
+  assert.equal((await state.getAndromedaMapping('max-user:101'))?.revision, 5);
+  assert.equal(await state.getAndromedaMapping('max-user:102'), undefined);
+});
+
+test('Andromeda session reset preserves the profile cookie and rejects malformed mappings', async () => {
+  let now = 100_000;
+  const state = new MemoryMaxTransportState(() => now);
+  const lease = await state.reserveConversationTurn('max-user:201', 1);
+  assert.equal(lease.status, 'reserved');
+  if (lease.status !== 'reserved') assert.fail('expected conversation lease');
+
+  assert.equal(await state.saveAndromedaMapping('max-user:201', lease.leaseToken, {
+    version: 1,
+    profileCookie,
+    sessionId: querySessionId,
+    revision: 2,
+    lastActivityAt: now,
+  }, 60), true);
+  now += 1_001;
+  const replacement = await state.reserveConversationTurn('max-user:201', 30);
+  assert.equal(replacement.status, 'reserved');
+  if (replacement.status !== 'reserved') assert.fail('expected replacement lease');
+  assert.equal(await state.resetAndromedaQuerySession('max-user:201', replacement.leaseToken, profileCookie, now, 60), true);
+  assert.deepEqual(await state.getAndromedaMapping('max-user:201'), {
+    version: 1,
+    profileCookie,
+    lastActivityAt: now,
+  });
+
+  await assert.rejects(
+    state.saveAndromedaMapping('max-user:201', replacement.leaseToken, {
+      version: 1,
+      profileCookie,
+      sessionId: querySessionId,
+      revision: 0,
+      lastActivityAt: now,
+    }, 60),
+    (error: unknown) => error instanceof AppError && error.code === ERROR_CODES.VALIDATION_FAILED,
+  );
+  await assert.rejects(
+    state.saveAndromedaMapping('max-user:201', replacement.leaseToken, {
+      version: 1,
+      profileCookie,
+      lastActivityAt: now,
+      transcript: 'must not be persisted',
+    } as never, 60),
+    (error: unknown) => error instanceof AppError && error.code === ERROR_CODES.VALIDATION_FAILED,
+  );
 });
 
 test('invalid keys, TTLs, lease tokens, nonce and deep-link payload fail before state access', async () => {

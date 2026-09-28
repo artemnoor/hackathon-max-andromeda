@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 import { ConfigError } from './errors.js';
-import { isAllowedMaxApiUrl, isProductionOrigin, isPublicHostname, normalizeOrigins, parseHttpOrigin, isSafeHostname } from './url-policy.js';
+import { isAllowedMaxApiUrl, isProductionOrigin, isPublicHostname, normalizeAndromedaApiBaseUrl, normalizeOrigins, parseHttpOrigin, isSafeHostname } from './url-policy.js';
 
 export type NodeEnvironment = 'development' | 'test' | 'staging' | 'production';
 export type MaxTransport = 'polling' | 'webhook';
@@ -15,6 +15,11 @@ export type AppConfig = Readonly<{
   isProtected: boolean;
   maxBotToken: string;
   maxApiBaseUrl: string;
+  andromedaApiBaseUrl: string;
+  andromedaProfileCookieName: string;
+  andromedaApiTimeoutMs: number;
+  andromedaProfileTtlSeconds: number;
+  andromedaQuerySessionTtlSeconds: number;
   transport: MaxTransport;
   webhookDomain: string;
   webhookPort: number;
@@ -52,6 +57,11 @@ const rawEnvironmentSchema = z.object({
     z.enum(['development', 'test', 'staging', 'production']).default('development')),
   MAX_BOT_TOKEN: z.string().trim().default(''),
   MAX_API_BASE_URL: z.string().trim().url().default('https://platform-api2.max.ru'),
+  ANDROMEDA_API_BASE_URL: z.string().trim().default('http://127.0.0.1:8000'),
+  ANDROMEDA_PROFILE_COOKIE_NAME: z.string().trim().default('andromeda_profile_session'),
+  ANDROMEDA_API_TIMEOUT_MS: z.preprocess(parseNumber(5_000), z.number().int().min(250).max(10_000)),
+  ANDROMEDA_PROFILE_TTL_SECONDS: z.preprocess(parseNumber(2_592_000), z.number().int().min(60).max(2_592_000)),
+  ANDROMEDA_QUERY_SESSION_TTL_SECONDS: z.preprocess(parseNumber(86_400), z.number().int().min(60).max(604_800)),
   MAX_TRANSPORT: z.preprocess((value) => typeof value === 'string' ? value.trim().toLowerCase() : value,
     z.enum(['polling', 'webhook']).default('polling')),
   MAX_WEBHOOK_DOMAIN: z.string().trim().default(''),
@@ -94,6 +104,11 @@ export const loadConfig = (environment: NodeJS.ProcessEnv = process.env): AppCon
 
   if (nodeEnv !== 'test' && raw.MAX_BOT_TOKEN.length < 12) fail('MAX_BOT_TOKEN', nodeEnv, 'is required outside test and must be non-empty');
   if (!isAllowedMaxApiUrl(raw.MAX_API_BASE_URL)) fail('MAX_API_BASE_URL', nodeEnv, 'must use the official MAX HTTPS API origin');
+  const andromedaApiBaseUrl = normalizeAndromedaApiBaseUrl(raw.ANDROMEDA_API_BASE_URL, nodeEnv)
+    ?? fail('ANDROMEDA_API_BASE_URL', nodeEnv, 'must use HTTPS publicly or a development loopback/Andromeda origin without credentials, query or fragment');
+  if (!/^[A-Za-z0-9_-]{1,64}$/u.test(raw.ANDROMEDA_PROFILE_COOKIE_NAME)) {
+    fail('ANDROMEDA_PROFILE_COOKIE_NAME', nodeEnv, 'must contain only safe cookie-name characters');
+  }
   if (raw.MAX_WEBHOOK_DOMAIN && !isSafeHostname(raw.MAX_WEBHOOK_DOMAIN)) fail('MAX_WEBHOOK_DOMAIN', nodeEnv, 'must be a hostname without scheme, path, port or credentials');
   if (isProtected && raw.MAX_WEBHOOK_DOMAIN && !isPublicHostname(raw.MAX_WEBHOOK_DOMAIN)) fail('MAX_WEBHOOK_DOMAIN', nodeEnv, 'protected environments require a public DNS hostname');
   if (!/^\/[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$/u.test(raw.MAX_WEBHOOK_PATH) || raw.MAX_WEBHOOK_PATH.includes('//') || raw.MAX_WEBHOOK_PATH.includes('..')) {
@@ -134,6 +149,11 @@ export const loadConfig = (environment: NodeJS.ProcessEnv = process.env): AppCon
     isProtected,
     maxBotToken: raw.MAX_BOT_TOKEN,
     maxApiBaseUrl: raw.MAX_API_BASE_URL,
+    andromedaApiBaseUrl,
+    andromedaProfileCookieName: raw.ANDROMEDA_PROFILE_COOKIE_NAME,
+    andromedaApiTimeoutMs: raw.ANDROMEDA_API_TIMEOUT_MS,
+    andromedaProfileTtlSeconds: raw.ANDROMEDA_PROFILE_TTL_SECONDS,
+    andromedaQuerySessionTtlSeconds: raw.ANDROMEDA_QUERY_SESSION_TTL_SECONDS,
     transport: raw.MAX_TRANSPORT,
     webhookDomain: raw.MAX_WEBHOOK_DOMAIN,
     webhookPort: raw.MAX_WEBHOOK_PORT,

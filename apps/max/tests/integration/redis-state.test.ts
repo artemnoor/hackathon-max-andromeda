@@ -62,6 +62,46 @@ test('Redis atomic MAX transport state contract', { skip: !redis || !state ? 'MA
   assert.equal(consumed.filter((value) => value !== undefined).length, 1);
   assert.deepEqual(consumed.find((value) => value !== undefined), reference);
 
+  const userKey = `max-user:${randomUUID()}`;
+  const conversationLocks = await Promise.all(Array.from({ length: 24 }, () => state.reserveConversationTurn(userKey, 30)));
+  const conversationLeases = conversationLocks.filter((value) => value.status === 'reserved');
+  assert.equal(conversationLeases.length, 1);
+  const conversationLease = conversationLeases[0];
+  assert.ok(conversationLease && conversationLease.status === 'reserved');
+  assert.equal(conversationLocks.filter((value) => value.status === 'busy').length, 23);
+
+  const mapping = {
+    version: 1 as const,
+    profileCookie: 'P'.repeat(64),
+    sessionId: `query-session:${'a'.repeat(32)}`,
+    revision: 3,
+    lastActivityAt: Date.now(),
+  };
+  assert.equal(await state.saveAndromedaMapping(userKey, conversationLease.leaseToken, mapping, 60), true);
+  assert.deepEqual(await state.getAndromedaMapping(userKey), mapping);
+  assert.equal(await state.releaseConversationTurn(userKey, conversationLease.leaseToken), true);
+
+  const replacementConversationLease = await state.reserveConversationTurn(userKey, 30);
+  assert.equal(replacementConversationLease.status, 'reserved');
+  if (replacementConversationLease.status === 'reserved') {
+    assert.equal(await state.saveAndromedaMapping(userKey, conversationLease.leaseToken, {
+      ...mapping,
+      revision: 4,
+    }, 60), false);
+    assert.equal(await state.resetAndromedaQuerySession(
+      userKey,
+      replacementConversationLease.leaseToken,
+      mapping.profileCookie,
+      Date.now(),
+      60,
+    ), true);
+    assert.deepEqual(await state.getAndromedaMapping(userKey), {
+      version: 1,
+      profileCookie: mapping.profileCookie,
+      lastActivityAt: Date.now(),
+    });
+  }
+
   const expiringKey = unique();
   assert.equal(await state.incrementWindow(expiringKey, 1), 1);
   await new Promise((resolve) => setTimeout(resolve, 1_100));

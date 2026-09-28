@@ -12,5 +12,16 @@ if (JSON.stringify(declared) !== JSON.stringify(documented)) {
   process.stderr.write(`Environment example differs from config schema.\nSchema: ${declared.join(', ')}\nExample: ${documented.join(', ')}\n`);
   process.exit(1);
 }
-if (example.includes('ANDROMEDA_') || example.includes('TELEGRAM_')) throw new Error('Environment example contains a retired product transport variable.');
+const allowedAndromedaVariables = new Set([
+  'ANDROMEDA_API_BASE_URL',
+  'ANDROMEDA_PROFILE_COOKIE_NAME',
+  'ANDROMEDA_API_TIMEOUT_MS',
+  'ANDROMEDA_PROFILE_TTL_SECONDS',
+  'ANDROMEDA_QUERY_SESSION_TTL_SECONDS',
+]);
+const forbiddenTransportVariables = documented.filter((name) =>
+  name.startsWith('TELEGRAM_') || (name.startsWith('ANDROMEDA_') && !allowedAndromedaVariables.has(name)));
+if (forbiddenTransportVariables.length) {
+  throw new Error(`Environment example contains unsupported transport variables: ${forbiddenTransportVariables.join(', ')}`);
+}
 process.stdout.write(`Environment example covers all ${declared.length} canonical variables.\n`);

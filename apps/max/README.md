@@ -1,63 +1,38 @@
 # Hackathon MAX Andromeda
 
-Отдельный transport foundation для последующей реализации MAX Bot и MAX Mini App Andromeda. Репозиторий содержит только MAX transport runtime и Mini App shell. Основной Andromeda backend и Public API v1 живут в отдельном репозитории; соединение с ними пока не реализовано.
+MAX Bot is a transport for Andromeda's existing Public API v1. Incoming free text, including example-button prompts, goes through \`POST /api/v1/assistant/query\`; question interpretation, clarification, admission logic, policy resolution, evidence and response modes stay in the Andromeda backend.
 
-## Что уже есть
+\`\`\`text
+MAX Bot ──┐
+MAX Mini App ──┼── HTTP / Public API v1 ── Andromeda backend
+Web ──────┘                                ├── PostgreSQL and domain services
+                                           ├── deterministic policy/admission logic
+                                           └── Jev / optional backend verbalization
+\`\`\`
 
-- MAX Bot polling/Webhook lifecycle с idempotent update handling и нейтральными `/start`/`/help` ответами.
-- Проверка MAX Mini App `initData` на сервере; оболочка не создаёт сессию Andromeda и не сохраняет личные данные.
-- Redis-backed rate limit, update leases и one-time deep-link state.
-- Hardened MAX API fetch, URL allowlist, structured redacting logs, CSP и bounded static host.
-- Docker Compose для локального Bot, Mini App и Redis; GitHub Actions CI.
+The MAX SDK is confined to \`src/max/platform\`. Bot HTTP types come from the generated client in \`src/andromeda/generated/public-api.ts\`, whose canonical source is \`services/andromeda/openapi.json\`. MAX does not import backend Python, database, Jev or LLM code.
 
-## Границы продукта
+## Working Bot behavior
 
-Это не готовый бот Andromeda: команды не вызывают backend и не содержат приёмных сценариев. Здесь нет Andromeda API client, авторизации/связки аккаунта, бизнес-логики, личного маршрута или product navigation. Эти границы описаны в [architecture](docs/architecture.md).
+- \`/start\` and \`/help\` show four fixed message prompts: find a program, compare programs, ask about admission, or ask about rules and benefits.
+- Every ordinary text message uses the same assistant API operation. Clarification options become bounded message buttons; other answers are rendered from typed response text, status, evidence summaries and action labels.
+- Long replies are split at UTF-8 code-point boundaries. Internal response \`data\` and \`metadata\` are never sent to MAX.
+- A server-side Redis mapping stores only the opaque Andromeda guest profile cookie, QuerySession ID/revision and activity time. MAX user IDs are hashed into Redis keys and are never treated as Andromeda identities.
+- MAX does not collect profile fields implicitly, link accounts, make admissions decisions, or call Jev/DeepSeek directly.
+- The Mini App remains a static, authenticated-launch shell. It does not yet present Andromeda product data or use the Public API.
 
-## Архитектура
+## Local development
 
-```text
-MAX User
-   ├── Bot ───────→ MAX Bot Transport Adapter ──┐
-   └── Mini App ─→ MAX Bridge + Mini App Host ──┤
-                                                ↓
-                                  Future application integration boundary
-                                      [not implemented in this phase]
-                                                ↓
-                                     Andromeda Public API v1
-                                          [NEXT PHASE]
+Use Node.js 22 or newer. Copy [\`.env.example\`](.env.example) to \`.env\`, set \`MAX_BOT_TOKEN\`, and set \`ANDROMEDA_API_BASE_URL\` to a reachable local or HTTPS Andromeda Public API v1 server. Start Redis and Andromeda using their development instructions, then run:
 
-Shared MAX infrastructure supports both transport adapters.
-```
-
-Текущая структура намеренно содержит только работающие контуры:
-
-```text
-src/
-  entrypoints/   # Bot и Mini App process composition
-  max/           # MAX Bot, auth, callbacks, client, deep links, webhook
-  shared/        # config, errors, logging, URL policy, Redis state
-  web/           # bounded Mini App host и CSP
-miniapp/         # MAX Bridge adapter и статическая оболочка
-tests/           # unit, HTTP integration и Playwright browser tests
-```
-
-Будущая integration boundary показана на схеме, но её package, Andromeda client и API calls здесь пока отсутствуют.
-
-## Локальный запуск
-
-Требуются Node.js 22+, npm и Docker Compose. Скопируйте `.env.example` в `.env`, задайте тестовый/реальный `MAX_BOT_TOKEN`, затем запустите `docker compose up --build`. Mini App будет доступен на `http://localhost:8787`; Bot использует MAX polling transport. Никогда не коммитьте `.env`.
-
-Runtime использует `MAX_BOT_TOKEN`, официальный `MAX_API_BASE_URL`, `MINI_APP_ORIGINS`, `MAX_INIT_DATA_TTL_SECONDS` и `REDIS_URL`; webhook и signing-key параметры нужны только для соответствующего transport/deployment режима. Полный перечень с безопасными примерами находится в [`.env.example`](.env.example).
-
-Для запуска без контейнеров используйте [development guide](docs/development.md). Для текущего поведения и проверок — [testing guide](docs/testing.md), для production deployment prerequisites — [deployment guide](docs/deployment.md).
-
-Основная локальная проверка:
-
-```powershell
+\`\`\`powershell
 npm ci
-npx playwright install chromium
-npm run verify
-```
+npm run dev:bot
+npm run dev:miniapp
+\`\`\`
 
-MAX Bot и Mini App transport foundation готовы к отдельному этапу проектирования их функциональных границ. Не вводите backend routes или frontend API calls, пока эти границы и Public API integration contract не утверждены.
+The Bot uses MAX polling in development by default; protected deployments use webhook and TLS Redis. The four message prompts need no scenario-specific routes. DeepSeek verbalization is optional and configured only on the Andromeda backend; without its feature flag/key, deterministic response text remains available.
+
+For repo-wide checks and the fixture-backed stack, use the root [monorepo guide](../../README.md). For security boundaries see [security](docs/security.md); for test commands see [testing](docs/testing.md), and for hosted configuration see [deployment](docs/deployment.md).
+
+Never commit \`.env\`, MAX tokens, guest cookies, update bodies or applicant data.
