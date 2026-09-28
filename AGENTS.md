@@ -1,20 +1,26 @@
-# Инструкции для агентов
+# Repository instructions
 
-## Workflow
+This repository contains two separately owned applications. Read this file first, then read the closest `AGENTS.md`, README and relevant architecture/API docs before changing a subsystem.
 
-Проверь branch/status/history, прочитай README.md и docs/ перед изменениями. Сначала найди уже существующий MAX transport contract. Реализуй только подтверждённый scope; после изменений запусти релевантные тесты, typing/build, security/architecture checks и git diff --check.
+## Ownership and boundaries
 
-## Архитектурные границы
+- `apps/max/` owns MAX protocol adapters, Bot/Mini App presentation, and MAX-specific state. It may call Andromeda only over HTTP Public API v1. Public API DTOs must come from the generated client under `apps/max`; never hand-copy backend schemas.
+- `services/andromeda/` owns the modular-monolith backend, canonical data, policy/domain decisions, PostgreSQL persistence, ingestion, Jev runtime and the Web application. Follow `services/andromeda/AGENTS.md` and its architecture rules for changes there.
+- `services/andromeda/openapi.json` is the canonical client-facing Public API v1 contract. The separate `services/andromeda/frontend-next/openapi.json` is the full application contract and must not be used by MAX.
+- Shared Git history and a single local stack do not authorize cross-runtime imports. MAX must not import Python, SQLAlchemy, database drivers, Jev SDKs or internal FastAPI modules.
 
-- src/max владеет только MAX protocol/adapters.
-- src/shared содержит transport-neutral config, errors, logging и Redis primitives, которые реально нужны MAX.
-- miniapp содержит отдельную статическую оболочку и MAX Bridge adapter.
-- MAX platform user ID не является Andromeda AccountId, auth role или правом доступа.
-- Andromeda Public API client/auth exchange/business logic сейчас отсутствуют.
-- Не добавляй generic plugin framework, product business modules, PostgreSQL schemas или migrations без отдельной задачи.
-- MAX initData проверяется только на сервере; initDataUnsafe не является подтверждением личности.
-- MAX credentials, raw initData, update bodies, user IDs и deep-link values не логируются.
+## Required workflow
 
-## Git и секреты
+Use `context → analysis → plan → implementation → tests → verification`. Check branch/status/history first. Preserve unrelated local or ignored data. Add tests for changed behavior and run the narrow checks before broader gates. For API changes, verify canonical OpenAPI and generated-client drift. Do not claim provider/live validation based on a stub.
 
-Не меняй опубликованную историю. Не добавляй secrets, .env, generated runtime artifacts или .ai-factory/. Перед commit проверь cached paths. Коммиты создавай под identity пользователя из Git config.
+## Security and operations
+
+- Keep MAX platform IDs distinct from Andromeda account identity and authorization. Validate MAX init data on the server.
+- Do not log prompts, applicant context, raw MAX updates/init data, cookies, provider keys or tokens.
+- Keep AI providers optional; deterministic backend decisions remain authoritative. Jev calibration gates and provider boundaries must not be bypassed.
+- Use fixture-backed local validation by default. Never make live university scraping or paid provider access a required CI dependency.
+- Do not commit `.env`, `.ai-factory`, generated runtime artifacts, nested `.git` directories or submodules.
+
+## Git
+
+Do not rewrite published history, force-push, reset the user's work, or stage unrelated files. Check the staged path list before every commit. Keep imported Andromeda provenance current in `UPSTREAM_ANDROMEDA.md`.

@@ -1,0 +1,33 @@
+version: admission-question-registry.v1
+definitions:
+  - definition_id: olympiad-profile-resolution.v1
+    kind: entity_resolution
+    operation: resolve_olympiad_profile
+    version: olympiad-profile-resolution-definition.v1
+    instructions: >-
+      Resolve the user's Olympiad/profile wording only to one of the supplied
+      source-backed candidate ids, or unresolved. Do not infer admission
+      benefits, eligibility, confirmation scores, validity, or program scope.
+    criteria:
+      - Choose only a supplied candidate id or unresolved.
+      - Do not create aliases or canonical entities.
+      - If the phrase does not identify one candidate, choose unresolved.
+    options:
+      - code: unresolved
+        description: The phrase does not identify a unique supplied candidate.
+    input_fields:
+      - text
+      - candidates
+    output_schema:
+      fields:
+        - candidate_id
+        - confidence
+      allowed_values:
+        - unresolved
+      additional_properties: false
+    deterministic_fallback: unresolved_candidate
+    timeout_class: interactive
+    max_input_chars: 1200
+    pii_policy: sanitized
+    evidence_required: true
+    evaluation_dataset_key: admission.olympiad-profile-resolution.v1

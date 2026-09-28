@@ -1,0 +1,15 @@
+{"case_id":"intent-train-001","definition_id":"intent.v1","expected":{"intent":"catalog_search"}}
+{"case_id":"intent-dev-001","definition_id":"intent.v1","expected":{"intent":"comparison"}}
+{"case_id":"intent-heldout-001","definition_id":"intent.v1","expected":{"intent":"admission_search"}}
+{"case_id":"metric-train-001","definition_id":"metric.v1","expected":{"metric_code":"mathematics_share"}}
+{"case_id":"metric-dev-001","definition_id":"metric.v1","expected":{"metric_code":"programming_share"}}
+{"case_id":"metric-heldout-001","definition_id":"metric.v1","expected":{"metric_code":null}}
+{"case_id":"action-train-001","definition_id":"next-action.v1","expected":{"action":"ask_clarification"}}
+{"case_id":"action-dev-001","definition_id":"next-action.v1","expected":{"action":"execute_query"}}
+{"case_id":"action-heldout-001","definition_id":"next-action.v1","expected":{"action":"show_result"}}
+{"case_id":"presentation-train-001","definition_id":"presentation.v1","expected":{"response_format":"text","template":"analytics-summary"}}
+{"case_id":"presentation-dev-001","definition_id":"presentation.v1","expected":{"response_format":"image","template":"metric-comparison"}}
+{"case_id":"presentation-heldout-001","definition_id":"presentation.v1","expected":{"response_format":"pdf","template":"analytics-report"}}
+{"case_id":"semantic-train-001","definition_id":"semantic-feature.v1","expected":{"review_status":"accepted"}}
+{"case_id":"semantic-dev-001","definition_id":"semantic-feature.v1","expected":{"review_status":"accepted"}}
+{"case_id":"semantic-heldout-001","definition_id":"semantic-feature.v1","expected":{"review_status":"review_required"}}

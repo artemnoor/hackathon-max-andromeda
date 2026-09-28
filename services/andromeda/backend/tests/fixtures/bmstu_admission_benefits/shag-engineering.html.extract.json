@@ -1,0 +1,12 @@
+{
+  "source_url": "https://olymp.bmstu.ru/ru/engeneering-olymp",
+  "content_sha256": "ad06f329dcb2998878d89c5f1bae08d72dbd808d84b7a06f12c13a715276fd1c",
+  "locator": "main;section=about",
+  "exact_subject_requires_selected_section": true,
+  "expected": {
+    "olympiad_name": "Олимпиада школьников «Шаг в будущее»",
+    "profile_name": "Инженерное дело",
+    "corresponding_subjects": ["физика", "информатика", "математика", "химия"],
+    "rsosh_level": 2
+  }
+}

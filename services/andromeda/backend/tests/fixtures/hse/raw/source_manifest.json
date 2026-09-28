@@ -1,0 +1,124 @@
+{
+  "snapshots": [
+    {
+      "source_kind": "hse_common",
+      "requested_url": "https://www.hse.ru/contacts/",
+      "final_url": "https://www.hse.ru/contacts/",
+      "status_code": 404,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.467342+00:00",
+      "content_sha256": "31ebdd0966ef6d4323ae785332c25c89bd6b1fac335ec7fd47714657567f249e",
+      "body_path": "common.html"
+    },
+    {
+      "source_kind": "hse_program_catalog",
+      "requested_url": "https://admissions.hse.ru/undergraduate-apply/programmes_list",
+      "final_url": "https://admissions.hse.ru/undergraduate-apply/programmes_list",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.516717+00:00",
+      "content_sha256": "d49708bd7e4b2fb8980b24d3ef3d6448dad63abe008171dc0800146b1db4a5f5",
+      "body_path": "program-catalog.html"
+    },
+    {
+      "source_kind": "hse_program_detail",
+      "requested_url": "https://www.hse.ru/ba/ami/admission/",
+      "final_url": "https://www.hse.ru/ba/ami/admission/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.538726+00:00",
+      "content_sha256": "0642a37fd5e005424686494b8992e367026b7fa25d26335771e3290e3695e70d",
+      "body_path": "program-detail.html"
+    },
+    {
+      "source_kind": "hse_program_detail",
+      "requested_url": "https://www.hse.ru/ba/compds/admission/",
+      "final_url": "https://www.hse.ru/ba/compds/admission/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.565727+00:00",
+      "content_sha256": "03d2bab31c3aa7d372b926bf7dd7ee0518b658067ebdc57794910798a4761545",
+      "body_path": "program-detail_2.html"
+    },
+    {
+      "source_kind": "hse_curriculum_index",
+      "requested_url": "https://www.hse.ru/ba/ami/learn_plans/",
+      "final_url": "https://www.hse.ru/ba/ami/learn_plans/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.574727+00:00",
+      "content_sha256": "c363c774cee57d334a25f49c007143bb196b52bf61469cdc140886be47aa9775",
+      "body_path": "curriculum-index.html"
+    },
+    {
+      "source_kind": "hse_curriculum_index",
+      "requested_url": "https://www.hse.ru/ba/compds/learn_plans/",
+      "final_url": "https://www.hse.ru/ba/compds/learn_plans/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.585726+00:00",
+      "content_sha256": "9047fce35d996d1aab6e3e305242fe5092c4d606a21975eb96b7ad03bb0843ec",
+      "body_path": "curriculum-index_2.html"
+    },
+    {
+      "source_kind": "hse_curriculum_document",
+      "requested_url": "https://www.hse.ru/dbs/education/sp_UnitedWorkPlan_27558_22072.pdf",
+      "final_url": "https://www.hse.ru/dbs/education/sp_UnitedWorkPlan_27558_22072.pdf",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "captured_at": "2026-09-18T09:59:54.621725+00:00",
+      "content_sha256": "c2c653ddb0082e585da3cfd1b6fd601f08b1f264e4aa0c14ddfeb2bb7066c5ea",
+      "body_path": "curriculum-document.pdf"
+    },
+    {
+      "source_kind": "hse_curriculum_document",
+      "requested_url": "https://www.hse.ru/dbs/education/sp_UnitedWorkPlan_28206_23003.pdf",
+      "final_url": "https://www.hse.ru/dbs/education/sp_UnitedWorkPlan_28206_23003.pdf",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "captured_at": "2026-09-18T09:59:54.654726+00:00",
+      "content_sha256": "ade4321b817747604cb9da9a97bb06a98d5c79b008fd0a66d25010553529c36c",
+      "body_path": "curriculum-document_2.pdf"
+    },
+    {
+      "source_kind": "hse_admission_rules",
+      "requested_url": "https://ba.hse.ru/minkrit",
+      "final_url": "https://ba.hse.ru/minkrit",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.703725+00:00",
+      "content_sha256": "ce81e52945ba9b64e3275dca20eaa98d1ba673477e4908ccc3a9d171410ec278",
+      "body_path": "admission-rules.html"
+    },
+    {
+      "source_kind": "hse_admission_places",
+      "requested_url": "https://ba.hse.ru/kolmest",
+      "final_url": "https://ba.hse.ru/kolmest",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.716726+00:00",
+      "content_sha256": "c8388b347697310b350fed4ab5b31ec12ab6f3cf8435fec903cbee4bb0eaa9de",
+      "body_path": "admission-places.html"
+    },
+    {
+      "source_kind": "hse_tuition",
+      "requested_url": "https://ba.hse.ru/price",
+      "final_url": "https://ba.hse.ru/price",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.729237+00:00",
+      "content_sha256": "71c94df8bf82cc9c9414faa70f43f0126de66ac1d8de35f86a3107c008a9c0ef",
+      "body_path": "tuition.html"
+    },
+    {
+      "source_kind": "hse_passing_scores",
+      "requested_url": "https://ba.hse.ru/result2025",
+      "final_url": "https://ba.hse.ru/result2025",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "captured_at": "2026-09-18T09:59:54.741245+00:00",
+      "content_sha256": "15626b4c372973f825a24b9e72c2c5ba22659641caf89803e6ccc49fc53dddf3",
+      "body_path": "passing-scores.html"
+    }
+  ]
+}

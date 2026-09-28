@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.playwright-cli/
+frontend-next/test-results/
+backend/data/*.db
+backend/pipeline_runs/
+*.egg-info/
+output/
+frontend-next/node_modules/
+frontend-next/.next/
+frontend-next/.next-smoke*/
+frontend-next/tsconfig-smoke-*.json
+frontend-next/coverage/
+.coverage
+frontend-next/tsconfig.tsbuildinfo
+frontend-next/openapi.ci.json
+frontend-next/.tmp-openapi.json
+frontend-next/playwright-report/
+.env.development
+.env.staging
+ops/postgres/.env
+artifacts/
+# Optional isolated Node bridge dependencies are installed locally, never committed.
+/backend/jev-tree-bridge/node_modules/

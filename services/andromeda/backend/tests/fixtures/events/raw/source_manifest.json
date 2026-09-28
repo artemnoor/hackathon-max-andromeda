@@ -1,0 +1,14 @@
+{
+  "snapshots": [
+    {
+      "source_kind": "bmstu_events",
+      "requested_url": "https://bmstu.ru/events",
+      "final_url": "https://bmstu.ru/events",
+      "status_code": 200,
+      "content_type": "application/json; charset=utf-8",
+      "captured_at": "2026-09-12T08:00:00+00:00",
+      "content_sha256": "cf85fb598aecf1009db7000b98a36c7610cd62a1a500496199ac3a8f9e932b96",
+      "body_path": "events.json"
+    }
+  ]
+}

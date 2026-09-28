@@ -1,0 +1,89 @@
+{
+  "events": [
+    {
+      "external_key": "dod-2026",
+      "title": "День открытых дверей ИУ",
+      "kind": "additional_education",
+      "format": "offline",
+      "starts_at": "2026-10-17T11:00:00+03:00",
+      "ends_at": "2026-10-17T15:00:00+03:00",
+      "description": "Знакомство с программами и лабораториями факультета.",
+      "registration_url": "https://bmstu.ru/events/dod-2026/register",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-02", "09.03.01-12"],
+      "venue": {
+        "external_key": "main-campus",
+        "name": "Главный корпус МГТУ им. Н.Э. Баумана",
+        "address": "Москва, 2-я Бауманская улица, 5",
+        "latitude": "55.7666",
+        "longitude": "37.6855"
+      }
+    },
+    {
+      "external_key": "robotics-workshop-2026",
+      "title": "Практикум по робототехнике",
+      "kind": "additional_education",
+      "format": "offline",
+      "starts_at": "2026-11-07T12:00:00+03:00",
+      "ends_at": "2026-11-07T16:00:00+03:00",
+      "description": "Практическое занятие для абитуриентов профильной программы.",
+      "registration_url": "https://bmstu.ru/events/robotics-workshop-2026/register",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-02"],
+      "venue": {
+        "external_key": "lab-iu7",
+        "name": "Лаборатория ИУ7",
+        "address": "Москва, Рубцовская набережная, 2",
+        "latitude": "55.7721",
+        "longitude": "37.6868"
+      }
+    },
+    {
+      "external_key": "research-day-2026",
+      "title": "Университетский день исследований",
+      "kind": "lecture",
+      "format": "offline",
+      "starts_at": "2026-11-21T10:00:00+03:00",
+      "ends_at": "2026-11-21T13:00:00+03:00",
+      "description": "Открытая программа о научных проектах университета.",
+      "university_ids": ["university:bmstu"],
+      "department_codes": [],
+      "program_codes": [],
+      "venue": {
+        "external_key": "assembly-hall",
+        "name": "Актовый зал",
+        "address": "Москва, 2-я Бауманская улица, 5",
+        "latitude": "55.7668",
+        "longitude": "37.6857"
+      }
+    },
+    {
+      "external_key": "online-open-lecture-2026",
+      "title": "Онлайн-лекция о цифровых системах",
+      "kind": "lecture",
+      "format": "online",
+      "starts_at": "2026-12-05T18:00:00+03:00",
+      "ends_at": "2026-12-05T19:30:00+03:00",
+      "description": "Встреча в формате вебинара для будущих студентов.",
+      "registration_url": "https://bmstu.ru/events/online-open-lecture-2026/register",
+      "university_ids": ["university:bmstu"],
+      "department_codes": [],
+      "program_codes": ["09.03.01-12"]
+    },
+    {
+      "external_key": "career-hybrid-2026",
+      "title": "Карьерная встреча с индустриальными партнёрами",
+      "kind": "career",
+      "format": "hybrid",
+      "starts_at": "2026-12-12T14:00:00+03:00",
+      "ends_at": "2026-12-12T16:00:00+03:00",
+      "description": "Гибридная встреча о стажировках и первых проектах.",
+      "registration_url": "https://bmstu.ru/events/career-hybrid-2026/register",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-12"]
+    }
+  ]
+}

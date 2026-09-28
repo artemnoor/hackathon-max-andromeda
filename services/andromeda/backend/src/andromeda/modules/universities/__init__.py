@@ -1,0 +1,1 @@
+"""Public university module surface."""

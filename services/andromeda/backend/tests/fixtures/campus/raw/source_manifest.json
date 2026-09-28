@@ -1,0 +1,14 @@
+{
+  "snapshots": [
+    {
+      "source_kind": "bmstu_campus_points",
+      "requested_url": "https://bmstu.ru/campus/points",
+      "final_url": "https://bmstu.ru/campus/points",
+      "status_code": 200,
+      "content_type": "application/json; charset=utf-8",
+      "captured_at": "2026-09-12T08:00:00+00:00",
+      "content_sha256": "0ec7c6f2fcd6b2798f5c007118acfac6540e07c20ebe2b92f44bc1c54fad72b6",
+      "body_path": "points.json"
+    }
+  ]
+}
