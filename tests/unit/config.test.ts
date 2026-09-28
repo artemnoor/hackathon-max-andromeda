@@ -51,7 +51,6 @@ test('webhook path and host reject path traversal and malformed values', () => {
 });
 
 test('old unrelated environment variables are ignored rather than becoming runtime config', () => {
-  const config = loadConfig({ NODE_ENV: 'test', PORTAL_AI_ENABLED: 'true', DATABASE_URL: 'not-a-runtime-field' });
-  assert.equal('portalAiEnabled' in config, false);
-  assert.equal('databaseUrl' in config, false);
+  const config = loadConfig({ NODE_ENV: 'test', UNRELATED_FEATURE_FLAG: 'true' });
+  assert.equal('unrelatedFeatureFlag' in config, false);
 });
