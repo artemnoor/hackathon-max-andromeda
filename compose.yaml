@@ -1,0 +1,73 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - max_transport_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  bot:
+    build: .
+    command: ["node", "dist/src/entrypoints/bot.js"]
+    environment:
+      NODE_ENV: development
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
+      MAX_TRANSPORT: ${MAX_TRANSPORT:-polling}
+      MAX_WEBHOOK_DOMAIN: ${MAX_WEBHOOK_DOMAIN:-}
+      MAX_WEBHOOK_PORT: ${MAX_WEBHOOK_PORT:-3000}
+      MAX_WEBHOOK_PATH: ${MAX_WEBHOOK_PATH:-/max/webhook}
+      MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:-}
+      MINI_APP_PORT: ${MINI_APP_PORT:-8787}
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MAX_INIT_DATA_TTL_SECONDS: ${MAX_INIT_DATA_TTL_SECONDS:-900}
+      MAX_DEEPLINK_SIGNING_KEY: ${MAX_DEEPLINK_SIGNING_KEY:-}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  miniapp:
+    build: .
+    command: ["node", "dist/src/entrypoints/miniapp.js"]
+    environment:
+      NODE_ENV: development
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
+      MAX_TRANSPORT: ${MAX_TRANSPORT:-polling}
+      MAX_WEBHOOK_DOMAIN: ${MAX_WEBHOOK_DOMAIN:-}
+      MAX_WEBHOOK_PORT: ${MAX_WEBHOOK_PORT:-3000}
+      MAX_WEBHOOK_PATH: ${MAX_WEBHOOK_PATH:-/max/webhook}
+      MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:-}
+      MINI_APP_PORT: ${MINI_APP_PORT:-8787}
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MAX_INIT_DATA_TTL_SECONDS: ${MAX_INIT_DATA_TTL_SECONDS:-900}
+      MAX_DEEPLINK_SIGNING_KEY: ${MAX_DEEPLINK_SIGNING_KEY:-}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:${MINI_APP_PORT:-8787}:8787"
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  max_transport_redis:

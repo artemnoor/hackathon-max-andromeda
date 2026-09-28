@@ -1,1 +1,0 @@
-"""Admission-benefit module tests."""

@@ -1,1 +1,0 @@
-"""Admission Fit module tests."""
