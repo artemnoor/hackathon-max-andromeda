@@ -1,0 +1,181 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-andromeda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-andromeda-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-andromeda_dev}
+    volumes:
+      - andromeda_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - max_transport_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  andromeda-seed:
+    build:
+      context: ./services/andromeda/backend
+    entrypoint: ["/bin/sh", "-ec"]
+    command: >-
+      python /app/scripts/run_andromeda_ingestion.py
+      --university bmstu
+      --mode fixture
+      --fixture-dir /app/tests/fixtures/tracer/raw
+      &&
+      python /app/scripts/ingest_bmstu_admission_benefits.py
+      --mode fixture
+      --year 2026
+      --fixture-dir /app/tests/fixtures/tracer/raw
+      --benefit-fixture-dir /app/tests/ingestion/fixtures/bmstu/admission_benefits
+      --allow-partial
+    environment:
+      ANDROMEDA_ENV: development
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-andromeda}:${POSTGRES_PASSWORD:-andromeda-local-only}@postgres:5432/${POSTGRES_DB:-andromeda_dev}
+      FRONTEND_ORIGIN: http://localhost:3000
+      LOG_LEVEL: INFO
+      ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
+      ANDROMEDA_PROFILE_COOKIE_MAX_AGE: "2592000"
+      ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
+      ANDROMEDA_PROFILE_COOKIE_SECURE: "false"
+      ANDROMEDA_PROFILE_COOKIE_SAMESITE: lax
+      JEV_ENABLED: "false"
+      JEV_SHADOW_ENABLED: "false"
+      JEV_CALIBRATION_ENABLED: "false"
+    volumes:
+      - ./services/andromeda/backend/tests/fixtures:/app/tests/fixtures:ro
+      - ./services/andromeda/backend/tests/ingestion/fixtures:/app/tests/ingestion/fixtures:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  andromeda:
+    build:
+      context: ./services/andromeda/backend
+    environment:
+      ANDROMEDA_ENV: development
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-andromeda}:${POSTGRES_PASSWORD:-andromeda-local-only}@postgres:5432/${POSTGRES_DB:-andromeda_dev}
+      FRONTEND_ORIGIN: http://localhost:3000
+      LOG_LEVEL: INFO
+      PORT: "8020"
+      ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
+      ANDROMEDA_PROFILE_COOKIE_MAX_AGE: "2592000"
+      ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
+      ANDROMEDA_PROFILE_COOKIE_SECURE: "false"
+      ANDROMEDA_PROFILE_COOKIE_SAMESITE: lax
+      JEV_ENABLED: "false"
+      JEV_SHADOW_ENABLED: "false"
+      JEV_CALIBRATION_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      andromeda-seed:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${ANDROMEDA_HOST_PORT:-8020}:8020"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8020/health/ready', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  max-bot:
+    profiles: ["max"]
+    build:
+      context: ./apps/max
+    command: ["node", "dist/src/entrypoints/bot.js"]
+    environment:
+      NODE_ENV: development
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
+      ANDROMEDA_API_BASE_URL: http://andromeda:8020
+      ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
+      ANDROMEDA_API_TIMEOUT_MS: "5000"
+      ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
+      ANDROMEDA_QUERY_SESSION_TTL_SECONDS: "86400"
+      MAX_TRANSPORT: polling
+      MAX_WEBHOOK_DOMAIN: ""
+      MAX_WEBHOOK_PORT: "3000"
+      MAX_WEBHOOK_PATH: /max/webhook
+      MAX_WEBHOOK_SECRET: ""
+      MINI_APP_PORT: "8787"
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MAX_INIT_DATA_TTL_SECONDS: "900"
+      MAX_DEEPLINK_SIGNING_KEY: ""
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    depends_on:
+      redis:
+        condition: service_healthy
+      andromeda:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  miniapp:
+    profiles: ["max"]
+    build:
+      context: ./apps/max
+    command: ["node", "dist/src/entrypoints/miniapp.js"]
+    environment:
+      NODE_ENV: development
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
+      ANDROMEDA_API_BASE_URL: http://andromeda:8020
+      ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
+      ANDROMEDA_API_TIMEOUT_MS: "5000"
+      ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
+      ANDROMEDA_QUERY_SESSION_TTL_SECONDS: "86400"
+      MAX_TRANSPORT: polling
+      MAX_WEBHOOK_DOMAIN: ""
+      MAX_WEBHOOK_PORT: "3000"
+      MAX_WEBHOOK_PATH: /max/webhook
+      MAX_WEBHOOK_SECRET: ""
+      MINI_APP_PORT: "8787"
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MAX_INIT_DATA_TTL_SECONDS: "900"
+      MAX_DEEPLINK_SIGNING_KEY: ""
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${MINI_APP_PORT:-8787}:8787"
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  andromeda_postgres:
+  max_transport_redis:

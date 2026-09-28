@@ -37,6 +37,25 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         status = monorepo.run_commands((command,))
         self.assertEqual(status, 7)
 
+    def test_stack_requires_explicit_fixture_seed_and_preserves_volumes_by_default(self) -> None:
+        with self.assertRaisesRegex(ValueError, "explicit --fixtures"):
+            monorepo.resolve_stack_action("up")
+
+        up = monorepo.resolve_stack_action("up", fixtures=True)
+        self.assertIn("--wait", up.argv)
+        self.assertIn("--build", up.argv)
+        self.assertNotIn("--volumes", up.argv)
+
+        down = monorepo.resolve_stack_action("down")
+        self.assertNotIn("--volumes", down.argv)
+        destructive_down = monorepo.resolve_stack_action("down", volumes=True)
+        self.assertIn("--volumes", destructive_down.argv)
+
+    def test_optional_max_profile_is_explicit(self) -> None:
+        command = monorepo.resolve_stack_action("up", fixtures=True, max_profile=True)
+        self.assertIn("--profile", command.argv)
+        self.assertIn("max", command.argv)
+
 
 if __name__ == "__main__":
     unittest.main()

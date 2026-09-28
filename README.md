@@ -30,7 +30,7 @@ python scripts/monorepo.py full
 python scripts/monorepo.py e2e
 ```
 
-Use `python scripts/monorepo.py stack -d` to start the combined local stack after configuring the environment examples. `full` includes the root Compose configuration check; it does not silently start long-running services or require PostgreSQL/provider credentials.
+Copy the root `.env.example` to `.env` for local Compose overrides. Start the fixture-backed PostgreSQL, Redis and Andromeda API with `python scripts/monorepo.py stack up --fixtures`. Add `--max` after setting `MAX_BOT_TOKEN` to start the real MAX Bot and Mini App profile. `python scripts/monorepo.py stack down` preserves database/cache volumes; pass `--volumes` only when you explicitly want to erase this local state. `full` validates Compose without starting services or requiring provider credentials.
 
 Use fixture-backed data for deterministic local checks. Live university sources and paid AI providers are optional and are not substitutes for the deterministic test suite. Never commit `.env` files, tokens, cookies, MAX update payloads or applicant profiles.
 

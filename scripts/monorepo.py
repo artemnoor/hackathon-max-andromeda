@@ -52,15 +52,40 @@ def resolve_target(target: str, arguments: Sequence[str] = ()) -> tuple[Command,
             Command("Andromeda browser suite", (python, "scripts/andromeda.py", "playwright"), ANDROMEDA_ROOT),
             Command("MAX browser suite", (npm, "run", "test:browser"), MAX_ROOT),
         ),
-        "stack": (Command("Fixture-backed Andromeda/MAX stack", ("docker", "compose", "up", "--build", *arguments), ROOT),),
     }
     if target not in targets:
         raise ValueError(f"Unknown monorepo target: {target}")
-    if target == "stack":
-        return targets[target]
     if arguments:
         raise ValueError(f"Target {target} does not accept additional arguments")
     return targets[target]
+
+
+def resolve_stack_action(
+    action: str,
+    *,
+    fixtures: bool = False,
+    max_profile: bool = False,
+    volumes: bool = False,
+) -> Command:
+    argv: list[str] = ["docker", "compose"]
+    if max_profile:
+        argv.extend(("--profile", "max"))
+    if action == "up":
+        if not fixtures:
+            raise ValueError("stack up requires explicit --fixtures; this stack always seeds local development data")
+        argv.extend(("up", "--build", "--detach", "--wait"))
+        label = "Fixture-backed Andromeda/MAX stack"
+    elif action == "down":
+        argv.append("down")
+        if volumes:
+            argv.append("--volumes")
+        label = "Stop Andromeda/MAX stack"
+    elif action == "status":
+        argv.extend(("ps", "--all"))
+        label = "Andromeda/MAX stack status"
+    else:
+        raise ValueError("stack action must be up, down, or status")
+    return Command(label, tuple(argv), ROOT)
 
 
 def run_commands(
@@ -87,8 +112,16 @@ def build_parser() -> argparse.ArgumentParser:
         ("e2e", "Fixture-backed API and browser smoke checks"),
     ):
         subparsers.add_parser(target, help=help_text)
-    stack = subparsers.add_parser("stack", help="Build and run the local fixture-backed stack")
-    stack.add_argument("compose_args", nargs=argparse.REMAINDER, help="Arguments forwarded to docker compose up")
+    stack = subparsers.add_parser("stack", help="Manage the local fixture-backed stack")
+    stack_actions = stack.add_subparsers(dest="stack_action", required=True)
+    stack_up = stack_actions.add_parser("up", help="Build/start local Postgres, Redis and fixture-backed Andromeda")
+    stack_up.add_argument("--fixtures", action="store_true", required=True, help="Confirm that local fixture data may be seeded")
+    stack_up.add_argument("--max", dest="max_profile", action="store_true", help="Also start MAX Bot and Mini App; requires MAX_BOT_TOKEN")
+    stack_down = stack_actions.add_parser("down", help="Stop services while preserving named data volumes")
+    stack_down.add_argument("--max", dest="max_profile", action="store_true", help="Include the optional MAX profile")
+    stack_down.add_argument("--volumes", action="store_true", help="Delete local Postgres/Redis data volumes")
+    stack_status = stack_actions.add_parser("status", help="Show local Compose service status")
+    stack_status.add_argument("--max", dest="max_profile", action="store_true", help="Include the optional MAX profile")
     return parser
 
 
@@ -96,8 +129,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        arguments = args.compose_args if args.target == "stack" else ()
-        commands = resolve_target(args.target, arguments)
+        if args.target == "stack":
+            command = resolve_stack_action(
+                args.stack_action,
+                fixtures=bool(getattr(args, "fixtures", False)),
+                max_profile=bool(getattr(args, "max_profile", False)),
+                volumes=bool(getattr(args, "volumes", False)),
+            )
+            commands = (command,)
+        else:
+            commands = resolve_target(args.target)
     except ValueError as error:
         parser.error(str(error))
     return run_commands(commands)
