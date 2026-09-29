@@ -30,6 +30,10 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
         engine.dispose()
 
     client = TestClient(create_app(database_url))
+    assistant = client.post(
+        "/assistant/query",
+        json={"text": "Покажи программы в university:bmstu"},
+    )
     programs = client.get("/programs")
     curriculum = client.get("/programs/program:09.03.01-02/curriculum")
     admissions = client.get("/programs/program:09.03.01-02/admissions")
@@ -66,6 +70,9 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
 
     assert programs.status_code == 200
     assert len(programs.json()["items"]) == 2
+    assert assistant.status_code == 200, assistant.text
+    assert assistant.json()["state"] == "needs_clarification", assistant.text
+    assert "metric" in assistant.json()["missing_slots"], assistant.text
     assert curriculum.status_code == 200
     assert admissions.status_code == 200
     assert events.status_code == 200
@@ -151,3 +158,4 @@ def test_postgresql_supports_the_campus_data_contract() -> None:
     assert detail.json()["programs"]
     assert events.status_code == 200
     assert events.json()["items"]
+
