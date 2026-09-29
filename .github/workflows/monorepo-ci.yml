@@ -204,6 +204,11 @@ jobs:
           --health-retries 12
     steps:
       - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
