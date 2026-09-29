@@ -58,12 +58,15 @@ async function publicApiTypes(specPath, specBytes) {
 
 export async function generateClientArtifacts({ specPath = canonicalOpenApiPath, outputDirectory = generatedClientDirectory } = {}) {
   const absoluteSpecPath = resolve(specPath);
-  let specBytes;
+  let sourceBytes;
   try {
-    specBytes = readFileSync(absoluteSpecPath);
+    sourceBytes = readFileSync(absoluteSpecPath);
   } catch {
     throw new Error(`Canonical OpenAPI file is unavailable: ${absoluteSpecPath}`);
   }
+  // Git may check out this text file with CRLF on Windows. Normalize before
+  // hashing so the generated provenance is stable across developer and CI OSes.
+  const specBytes = Buffer.from(sourceBytes.toString('utf8').replace(/\r\n?/gu, '\n'), 'utf8');
   const [client, manifest] = await Promise.all([
     publicApiTypes(absoluteSpecPath, specBytes),
     Promise.resolve(manifestFor(specBytes)),

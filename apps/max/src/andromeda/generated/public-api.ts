@@ -5,7 +5,7 @@
 
 // Canonical contract: services/andromeda/openapi.json
 // Upstream Andromeda: e8118b611220320f17ab60e936455680441e004d
-// OpenAPI SHA-256: 440c74bd4206e0e011866c7112f57b28059c6f59a66ec8695a588f0025769c44
+// OpenAPI SHA-256: bbe2b49661d13fcadbb9849009c02c6493dce40e62961613fd0a8da3fe1ec70e
 export interface paths {
     "/api/v1/decision/final-choice": {
         parameters: {
