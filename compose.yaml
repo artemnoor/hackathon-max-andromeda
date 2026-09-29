@@ -32,18 +32,19 @@ services:
     build:
       context: ./services/andromeda/backend
     entrypoint: ["/bin/sh", "-ec"]
-    command: >-
-      python /app/scripts/run_andromeda_ingestion.py
-      --university bmstu
-      --mode fixture
-      --fixture-dir /app/tests/fixtures/tracer/raw
-      &&
-      python /app/scripts/ingest_bmstu_admission_benefits.py
-      --mode fixture
-      --year 2026
-      --fixture-dir /app/tests/fixtures/tracer/raw
-      --benefit-fixture-dir /app/tests/ingestion/fixtures/bmstu/admission_benefits
-      --allow-partial
+    command:
+      - >-
+        python /app/scripts/run_andromeda_ingestion.py
+        --university bmstu
+        --mode fixture
+        --fixture-dir /app/tests/fixtures/tracer/raw
+        &&
+        python /app/scripts/ingest_bmstu_admission_benefits.py
+        --mode fixture
+        --year 2026
+        --fixture-dir /app/tests/fixtures/tracer/raw
+        --benefit-fixture-dir /app/tests/ingestion/fixtures/bmstu/admission_benefits
+        --allow-partial
     environment:
       ANDROMEDA_ENV: development
       ANDROMEDA_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-andromeda}:${POSTGRES_PASSWORD:-andromeda-local-only}@postgres:5432/${POSTGRES_DB:-andromeda_dev}
