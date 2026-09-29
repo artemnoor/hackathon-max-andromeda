@@ -97,6 +97,15 @@ test('HTTP AI program discovery clarifies a metric and carries the same backend 
 }, async () => {
   const assistant = interaction();
   const userId = randomInt(1_000_000, 2_000_000_000);
+  const baseUrl = apiUrl;
+  assert.ok(baseUrl);
+  const catalogResponse = await fetch(`${baseUrl}/universities`);
+  assert.equal(catalogResponse.status, 200);
+  const catalog = await catalogResponse.json() as { items?: ReadonlyArray<{ id?: string }> };
+  assert.ok(
+    catalog.items?.some((item) => item.id === 'university:bmstu'),
+    JSON.stringify(catalog),
+  );
   const firstText = 'Покажи программы в university:bmstu';
   const first = await assistant.query(syntheticMessage(firstText, userId), firstText);
 
