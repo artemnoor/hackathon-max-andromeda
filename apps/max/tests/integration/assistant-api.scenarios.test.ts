@@ -97,15 +97,15 @@ test('HTTP AI program discovery clarifies a metric and carries the same backend 
 }, async () => {
   const assistant = interaction();
   const userId = randomInt(1_000_000, 2_000_000_000);
-  const update = syntheticMessage('Какие программы в МГТУ связаны с искусственным интеллектом?', userId);
-  const first = await assistant.query(update, 'Какие программы в МГТУ связаны с искусственным интеллектом?');
+  const firstText = 'Покажи программы в university:bmstu';
+  const first = await assistant.query(syntheticMessage(firstText, userId), firstText);
 
-  assert.equal(first.result.state, 'needs_clarification');
-  assert.ok(first.result.missing_slots.includes('metric'));
+  assert.equal(first.result.state, 'needs_clarification', JSON.stringify(first.result));
+  assert.ok(first.result.missing_slots.includes('metric'), JSON.stringify(first.result));
   assert.ok(first.result.session_id);
 
   const second = await assistant.query(syntheticMessage('AI', userId), 'AI');
-  assert.equal(second.result.state, 'complete');
+  assert.equal(second.result.state, 'complete', JSON.stringify(second.result));
   assert.equal(second.result.session_id, first.result.session_id);
   assert.ok(second.result.revision > first.result.revision);
   assert.ok(second.result.query?.metrics.includes('ai_share'));
@@ -115,10 +115,10 @@ test('HTTP applicant score query reaches the existing admission-fit result with 
   skip: testIsEnabled ? false : 'MAX_E2E_ANDROMEDA_URL is not set; run `python scripts/monorepo.py e2e` for fixture-backed HTTP coverage',
 }, async () => {
   const result = await query(
-    'Куда я поступлю с 270 баллами: русский 90, математика 90, информатика 90 в university:bmstu на бюджет в 2026 году?',
+    'Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu, бюджет на 2026 год',
   );
 
-  assert.equal(result.state, 'complete');
+  assert.equal(result.state, 'complete', JSON.stringify(result));
   assert.equal(result.admission_request?.admission_year, 2026);
   assert.equal(result.admission_request?.funding_type, 'budget');
   const admissionResult = result.admission_result;
@@ -140,14 +140,14 @@ test('HTTP comparison query reaches the deterministic program analytics path', {
   assert.ok(first.result.missing_slots.includes('entity'));
   assert.ok(first.result.session_id);
 
-  const followUpText = 'Сравни program:bmstu:09.03.01-02 и program:bmstu:09.03.01-12 по programming_share и mathematics_share';
+  const followUpText = 'Сравни program:bmstu:09.03.01-02 и program:bmstu:09.03.01-12 по программированию и математике';
   const followUp = await assistant.query(
     syntheticMessage(followUpText, userId),
     followUpText,
   );
   const result = followUp.result;
 
-  assert.equal(result.state, 'complete');
+  assert.equal(result.state, 'complete', JSON.stringify(result));
   assert.equal(result.session_id, first.result.session_id);
   assert.ok(result.revision > first.result.revision);
   assert.equal(result.query?.scope, 'program');
