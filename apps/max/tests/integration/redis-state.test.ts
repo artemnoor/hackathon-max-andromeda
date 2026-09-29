@@ -88,17 +88,18 @@ test('Redis atomic MAX transport state contract', { skip: !redis || !state ? 'MA
       ...mapping,
       revision: 4,
     }, 60), false);
+    const resetAt = Date.now();
     assert.equal(await state.resetAndromedaQuerySession(
       userKey,
       replacementConversationLease.leaseToken,
       mapping.profileCookie,
-      Date.now(),
+      resetAt,
       60,
     ), true);
     assert.deepEqual(await state.getAndromedaMapping(userKey), {
       version: 1,
       profileCookie: mapping.profileCookie,
-      lastActivityAt: Date.now(),
+      lastActivityAt: resetAt,
     });
   }
 
