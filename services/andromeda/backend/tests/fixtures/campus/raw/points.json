@@ -1,0 +1,55 @@
+{
+  "points": [
+    {
+      "external_key": "main-campus",
+      "point_type": "building",
+      "name": "Главный корпус МГТУ им. Н.Э. Баумана",
+      "address": "Москва, 2-я Бауманская улица, 5",
+      "latitude": "55.7666",
+      "longitude": "37.6855",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-02", "09.03.01-12"]
+    },
+    {
+      "external_key": "lab-iu7",
+      "point_type": "room_zone",
+      "name": "Лаборатория ИУ7",
+      "address": "Москва, Рубцовская набережная, 2",
+      "latitude": "55.7721",
+      "longitude": "37.6868",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-02"]
+    },
+    {
+      "external_key": "assembly-hall",
+      "point_type": "event_venue",
+      "name": "Актовый зал",
+      "address": "Москва, 2-я Бауманская улица, 5",
+      "latitude": "55.7668",
+      "longitude": "37.6857",
+      "university_ids": ["university:bmstu"],
+      "department_codes": [],
+      "program_codes": []
+    },
+    {
+      "external_key": "main-entrance",
+      "point_type": "entrance",
+      "name": "Главный вход",
+      "address": "Москва, 2-я Бауманская улица, 5",
+      "university_ids": ["university:bmstu"],
+      "department_codes": [],
+      "program_codes": []
+    },
+    {
+      "external_key": "innovation-hub",
+      "point_type": "other",
+      "name": "Инновационный центр",
+      "address": "Москва, Рубцовская набережная, 2",
+      "university_ids": ["university:bmstu"],
+      "department_codes": ["iu7"],
+      "program_codes": ["09.03.01-12"]
+    }
+  ]
+}

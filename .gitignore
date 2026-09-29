@@ -8,5 +8,15 @@ data/
 .env
 .env.*
 !.env.example
+!**/.env.example
+!**/.env.*.example
 *.tsbuildinfo
 .npm/
+**/.next/
+**/playwright-report/
+**/test-results/
+**/coverage/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/

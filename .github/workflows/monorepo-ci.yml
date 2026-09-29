@@ -1,0 +1,490 @@
+name: Andromeda MAX monorepo CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  max:
+    name: MAX Bot and Mini App
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      CI: "true"
+      MAX_TEST_REDIS_URL: redis://127.0.0.1:6379/1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/max/package-lock.json
+      - run: npm ci
+        working-directory: apps/max
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/max
+      - run: npm run verify
+        working-directory: apps/max
+      - run: docker compose --file compose.yaml config --quiet
+        working-directory: apps/max
+      - run: docker build --tag hackathon-max:${{ github.sha }} .
+        working-directory: apps/max
+
+  backend:
+    name: Andromeda backend, architecture, migrations and typing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend and offline Jev test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser --extra evaluation --extra jev --extra jevql
+        working-directory: services/andromeda/backend
+      - name: Run fixture ingestion preflight
+        run: uv run --locked --extra dev --extra browser python scripts/preflight.py --profile bmstu --profile hse
+        working-directory: services/andromeda/backend
+      - name: Run backend suite with coverage
+        run: uv run --locked --extra dev --extra browser python -m pytest -q --cov=src/andromeda --cov-report=term-missing --cov-report=xml:coverage-backend.xml --junitxml=junit-backend.xml
+        working-directory: services/andromeda/backend
+      - name: Run strict backend typing
+        run: uv run --locked --extra dev --extra browser python -m mypy
+        working-directory: services/andromeda/backend
+      - name: Run migration/model check
+        run: python scripts/andromeda.py migrations
+        working-directory: services/andromeda
+      - name: Upload backend test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-backend-tests
+          path: |
+            services/andromeda/backend/coverage-backend.xml
+            services/andromeda/backend/junit-backend.xml
+
+  frontend:
+    name: Andromeda Web frontend
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend exporter
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: services/andromeda/backend
+      - name: Export full and Public API v1 contracts
+        run: |
+          uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --surface full --out frontend-next/openapi.ci.json
+          uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --surface public-v1 --out frontend-next/openapi.public.ci.json
+        working-directory: services/andromeda
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/andromeda/frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: services/andromeda/frontend-next
+      - name: Check full OpenAPI snapshot
+        run: npm run check-openapi-snapshot
+        working-directory: services/andromeda/frontend-next
+        env:
+          OPENAPI_FILE: openapi.ci.json
+          OPENAPI_SNAPSHOT: openapi.json
+      - name: Check Public API v1 snapshot
+        run: npm run check-openapi-snapshot
+        working-directory: services/andromeda/frontend-next
+        env:
+          OPENAPI_FILE: openapi.public.ci.json
+          OPENAPI_SNAPSHOT: ../openapi.json
+      - name: Check full generated Web client
+        run: npm run check-api-drift
+        working-directory: services/andromeda/frontend-next
+        env:
+          OPENAPI_FILE: openapi.ci.json
+      - name: Check generated Public API v1 Web client
+        run: npm run check-public-api-drift
+        working-directory: services/andromeda/frontend-next
+        env:
+          OPENAPI_FILE: openapi.public.ci.json
+      - run: npm run test:unit
+        working-directory: services/andromeda/frontend-next
+      - run: npm run test:unit:coverage
+        working-directory: services/andromeda/frontend-next
+      - run: npm run lint
+        working-directory: services/andromeda/frontend-next
+      - run: npm run build
+        working-directory: services/andromeda/frontend-next
+
+  contract-drift:
+    name: Public API v1, DATA-API and generated MAX contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend OpenAPI exporter
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: services/andromeda/backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/max/package-lock.json
+            services/andromeda/frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: apps/max
+      - run: npm ci
+        working-directory: services/andromeda/frontend-next
+      - name: Verify both OpenAPI snapshots and generated Web clients
+        run: python scripts/andromeda.py openapi
+        working-directory: services/andromeda
+      - name: Run official DATA-API 1.0 validator
+        run: python scripts/andromeda.py data-api
+        working-directory: services/andromeda
+      - run: npm run check:andromeda-client-drift
+        working-directory: apps/max
+      - run: npm run typecheck
+        working-directory: apps/max
+      - run: npm run check:architecture
+        working-directory: apps/max
+      - run: python -m unittest discover -s tests -p test_monorepo.py
+
+  postgresql-integration:
+    name: PostgreSQL repositories and API integration
+    runs-on: ubuntu-latest
+    env:
+      ANDROMEDA_ENV: test
+      ANDROMEDA_POSTGRES_TEST_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
+      LOG_LEVEL: INFO
+      ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: andromeda_ci
+          POSTGRES_USER: andromeda
+          POSTGRES_PASSWORD: andromeda-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U andromeda -d andromeda_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for study-plan parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser
+        working-directory: services/andromeda/backend
+      - name: Apply PostgreSQL migrations
+        run: uv run --locked --extra dev python -m alembic upgrade head
+        working-directory: services/andromeda/backend
+      - name: Run PostgreSQL repository and API regression suites
+        run: >-
+          uv run --locked --extra dev python -m pytest -q
+          tests/integration/test_postgresql_ingestion.py
+          tests/integration/test_postgresql_admission_benefits.py
+          tests/integration/test_postgresql_smoke.py
+          tests/integration/test_postgresql_user_profile.py
+          tests/integration/test_personal_route_vertical_slice.py
+          tests/integration/test_admission_fit_vertical_slice.py
+          tests/integration/test_campus_storage_vertical_slice.py
+          tests/integration/test_campus_live_projection_safety.py
+          tests/vertical/test_campus_vertical_slice.py
+          tests/vertical/test_personal_route_scope_guard.py
+          tests/api/test_auth_api.py
+          tests/integration/test_user_profile_persistence.py
+        working-directory: services/andromeda/backend
+
+  fullstack-browser:
+    name: Fixture fullstack and Playwright
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    env:
+      ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
+      PLAYWRIGHT_OPS_API_KEY: ci-admin-ops-key
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend and frontend dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser
+        working-directory: services/andromeda/backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/andromeda/frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: services/andromeda/frontend-next
+      - name: Run production-like fixture smoke
+        run: uv run --project backend --locked --extra dev --extra browser python backend/scripts/run_andromeda_demo.py --mode fixture --check --log-level INFO
+        working-directory: services/andromeda
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: services/andromeda/frontend-next
+      - name: Start fixture API and frontend
+        shell: bash
+        run: |
+          uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/andromeda-demo.pid"
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/andromeda-demo.log"
+          exit 1
+        working-directory: services/andromeda
+      - run: npm run test:e2e
+        working-directory: services/andromeda/frontend-next
+      - name: Stop fixture stack
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/andromeda-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-demo.pid")" || true; fi
+
+  monorepo-e2e:
+    name: PostgreSQL/Redis fixture stack and MAX Public API E2E
+    runs-on: ubuntu-latest
+    needs: [max, backend, frontend, contract-drift]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler for fixture parsing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend test environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser
+        working-directory: services/andromeda/backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/max/package-lock.json
+            services/andromeda/frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: apps/max
+      - run: npm ci
+        working-directory: services/andromeda/frontend-next
+      - name: Install browser runtime for both clients
+        run: |
+          npx playwright install --with-deps chromium
+        working-directory: apps/max
+      - name: Install Andromeda browser runtime
+        run: npx playwright install --with-deps chromium
+        working-directory: services/andromeda/frontend-next
+      - name: Start isolated fixture stack, verify HTTP sessions and browser suites, and clean up
+        run: python scripts/monorepo.py e2e
+
+  jev-ecosystem-offline:
+    name: Jev ecosystem offline and calibration boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked evaluation environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra evaluation --extra jev --extra jevql
+        working-directory: services/andromeda/backend
+      - name: Verify Jev tool manifest and lock
+        run: |
+          uv lock --check
+          uv run --locked --extra dev python -m pytest -q tests/evaluation/test_jev_tool_manifest.py
+        working-directory: services/andromeda/backend
+      - name: Run bounded offline Jev adapter regression corpus
+        run: >-
+          uv run --locked --extra evaluation --extra jev --extra jevql --extra dev python -m pytest -q
+          tests/evaluation/test_jev_ecosystem_harness.py
+          tests/evaluation/test_jevcal_artifacts.py
+          tests/evaluation/test_jevcal_exporter.py
+          tests/evaluation/test_jev_align_adapter.py
+          tests/infrastructure/test_jev_adapter.py
+          tests/infrastructure/test_jevcal_cascade.py
+          tests/infrastructure/jevql
+          tests/modules/entity_resolution/test_hierarchical.py
+          tests/modules/entity_resolution/test_services.py
+          tests/composition/test_jevql_wiring.py
+        working-directory: services/andromeda/backend
+      - name: Run Jev tree bridge smoke
+        run: |
+          npm ci --ignore-scripts
+          printf '%s' '{"query":"program","entityType":"program","candidates":[{"canonical_id":"program:test:09.03.03-001","label":"program","code":"09.03.03-001"}],"tree":{"root":{"node_id":"root","depth":0,"candidate_ids":["program:test:09.03.03-001"],"children":[]},"max_depth":4,"max_fanout":16},"candidateHash":"ci","maxFanout":16,"maxDepth":4,"maxCalls":1,"timeoutMs":1000}' | node src/index.mjs
+        working-directory: services/andromeda/backend/jev-tree-bridge
+      - name: Run Jev ecosystem evaluation and module boundaries
+        run: |
+          uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output "$RUNNER_TEMP/jev-ecosystem-report.json" --check
+          uv run --locked --extra dev python -m pytest -q tests/architecture/test_jev_boundaries.py tests/architecture/test_module_boundaries.py
+        working-directory: services/andromeda/backend
+
+  proftest-integration:
+    name: Proftest, admissions and recommendations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked domain-test environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser --extra evaluation --extra jev --extra jevql
+        working-directory: services/andromeda/backend
+      - name: Run proftest and admission-fit regressions
+        run: >-
+          uv run --project backend --locked --extra dev --extra browser python -m pytest -q
+          backend/tests/modules/proftest backend/tests/modules/admission_fit
+          backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py
+          backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py
+          backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py
+          backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py
+          backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
+          backend/tests/modules/auth backend/tests/api/test_auth_api.py
+          backend/tests/modules/recommendations backend/tests/api/test_recommendations_api.py
+          backend/tests/api/test_recommendations_contract.py backend/tests/integration/test_recommendations_catalog.py
+        working-directory: services/andromeda
+      - name: Run strict typing for integrated owners
+        run: uv run --project backend --locked --extra dev --extra browser python -m mypy backend/src/andromeda
+        working-directory: services/andromeda
+
+  dependency-audit:
+    name: Python and JavaScript dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked Python environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: services/andromeda/backend
+      - name: Audit runtime Python dependencies
+        run: |
+          uv export --locked --format requirements.txt --no-hashes --no-editable --no-dev --no-emit-project --output-file "$RUNNER_TEMP/andromeda-runtime-requirements.txt"
+          uv tool run --from pip-audit==2.9.0 pip-audit -r "$RUNNER_TEMP/andromeda-runtime-requirements.txt" --strict --progress-spinner off
+        working-directory: services/andromeda/backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/max/package-lock.json
+            services/andromeda/frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: services/andromeda/frontend-next
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: services/andromeda/frontend-next
+      - run: npm ci
+        working-directory: apps/max
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: apps/max
+
+  packaging:
+    name: Monorepo Docker and deployment artifacts
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    env:
+      BACKEND_IMAGE: andromeda-backend:ci
+      FRONTEND_IMAGE: andromeda-frontend:ci
+      ANDROMEDA_STAGING_DB: andromeda_ci
+      ANDROMEDA_STAGING_DB_USER: andromeda
+      ANDROMEDA_STAGING_DB_PASSWORD: ci-only-placeholder
+      ANDROMEDA_DOMAIN: andromeda.example.org
+      ANDROMEDA_OPS_API_KEY: ci-only-ops-key
+      ANDROMEDA_RENDER_HMAC_SECRET: ci-only-render-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Andromeda deployment contract
+        run: python scripts/check_deployment_artifacts.py
+        working-directory: services/andromeda
+      - name: Build backend image
+        run: docker build --file Dockerfile --tag "$BACKEND_IMAGE" .
+        working-directory: services/andromeda/backend
+      - name: Build canonical Web image
+        run: docker build --file Dockerfile --tag "$FRONTEND_IMAGE" .
+        working-directory: services/andromeda/frontend-next
+      - name: Validate MAX and root Compose contracts
+        run: |
+          docker compose --file apps/max/compose.yaml config --quiet
+          docker compose config --quiet
+
+  documentation:
+    name: Documentation, architecture and clean patch checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check_docs.py
+        working-directory: services/andromeda
+      - run: python scripts/andromeda.py --help
+        working-directory: services/andromeda
+      - run: python scripts/release_evidence.py --require-clean
+        working-directory: services/andromeda
+      - run: python scripts/check_deployment_artifacts.py
+        working-directory: services/andromeda
+      - run: python scripts/monorepo.py --help
+      - run: python -m unittest discover -s tests -p test_monorepo.py
+      - run: npm run docs:check
+        working-directory: apps/max
+      - run: git diff --check

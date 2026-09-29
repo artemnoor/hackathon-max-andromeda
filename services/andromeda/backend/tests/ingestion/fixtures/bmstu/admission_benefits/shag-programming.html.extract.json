@@ -1,0 +1,16 @@
+{
+  "source_url": "https://olymp.bmstu.ru/ru/programming-olymp",
+  "content_sha256": "d37c8fb4275c8f533a7136282f0ebb6ae82fc41699570ca14fbeb298af195530",
+  "locator": "main;section=admission-benefit-2026",
+  "source_title": "Информатика | Олимпиада школьников «Шаг в будущее»",
+  "excerpt": "Олимпиада давала право поступления без вступительных испытаний (БВИ) в МГТУ им. Н.Э. Баумана в 2026 году: победители — на все направления подготовки и специальности; призёры — на все направления подготовки и специальности, кроме 01.03.02, 09.03.04, 10.05.01 и 10.05.03.",
+  "expected": {
+    "olympiad_name": "Олимпиада школьников «Шаг в будущее»",
+    "profile_name": "Программирование",
+    "corresponding_subjects": ["информатика"],
+    "rsosh_level": 3,
+    "winner_scope": "all",
+    "prize_scope": "all_except",
+    "excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]
+  }
+}

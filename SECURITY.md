@@ -1,7 +1,7 @@
 # Security policy
 
-Не коммить MAX bot tokens, Webhook secrets, Redis URLs with credentials, raw MAX initData, signed deep links, user profiles or runtime data. Используй локальный .env или secret manager.
+Report vulnerabilities privately to the repository owner rather than opening a public issue containing exploit details or personal data.
 
-MAX WebApp identity подтверждается только серверной HMAC-проверкой свежего initData. Не доверяй initDataUnsafe, userId/role из клиентского тела или auth в query string. Webhook требует HTTPS на внешнем edge, secret header, точный path и ограниченный request body. Callback payloads проходят allowlist. Redis outages fail closed in protected environments.
+Never commit credentials, `.env` files, MAX init data, cookies, raw platform updates, applicant profiles, or provider request/response logs. MAX authentication must validate signed init data server-side. MAX platform identifiers must not be treated as Andromeda account identities. All backend access from MAX must use the allowlisted Public API v1 HTTP client.
 
-Не публикуй exploit details в открытом issue. Для отчёта используй GitHub private vulnerability reporting в настройках репозитория.
+Source ingestion must retain the backend's URL allowlist, redirect validation, bounded downloads and content checks. AI providers remain optional and must not become a source of canonical facts or deterministic eligibility decisions.

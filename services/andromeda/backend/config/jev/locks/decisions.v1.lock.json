@@ -1,0 +1,108 @@
+{
+  "jevcal_version": "0.1.0",
+  "created": "2026-09-23T14:17:54+00:00",
+  "provider": "deterministic-fixture",
+  "model_requested": "jev-latest",
+  "model_observed": [
+    "fixture-only"
+  ],
+  "questions_sha": "7e5a508c6cc78b501c64005220cb3d323fe80cd6c1fc7426f2b482d0333b8178",
+  "dataset_sha": "ac9acc764d01e96ae0fd9dc53fd0315d54587dc77923027bc1a7ed8e0bd6c53b",
+  "n_rows": 12,
+  "holdout": 0.5,
+  "seed": 7,
+  "questions": {
+    "intent.v1": {
+      "type": "choice",
+      "instructions": "Resolve only the supported Andromeda conversation intent.",
+      "criteria": {
+        "catalog_search": "Search the educational catalog.",
+        "comparison": "Compare resolved educational entities.",
+        "admission_search": "Search admission fit for supplied applicant facts.",
+        "recommendation": "Recommend programs using explicit criteria.",
+        "unknown": "The request cannot be resolved safely."
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.1266666666666667
+      }
+    },
+    "metric.v1": {
+      "type": "choice",
+      "instructions": "Resolve a user phrase to an allow-listed metric candidate.",
+      "criteria": {
+        "mathematics_share": "mathematics_share",
+        "programming_share": "programming_share",
+        "unknown": "unknown"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.16666666666666663
+      }
+    },
+    "next-action.v1": {
+      "type": "choice",
+      "instructions": "Select the next action from the typed state and available actions. If intent is compare_programs and next_action is execute_query, choose compare; this asks the application to execute the same typed query and render it as a comparison. For another executable intent, choose execute_query. Choose ask_clarification only when a required slot is missing or unresolved. Never choose a report or mini-app action unless that capability is explicitly available.",
+      "criteria": {
+        "ask_clarification": "ask_clarification",
+        "execute_query": "execute_query",
+        "show_result": "show_result",
+        "compare": "compare",
+        "build_report": "build_report",
+        "open_mini_app": "open_mini_app"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.16333333333333333
+      }
+    },
+    "presentation.v1": {
+      "type": "choice",
+      "instructions": "Choose an allow-listed response format and template.",
+      "criteria": {
+        "text": "text",
+        "image": "image",
+        "image_collection": "image_collection",
+        "pdf": "pdf",
+        "mini_app": "mini_app"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.17333333333333334
+      }
+    }
+  },
+  "cost": null
+}

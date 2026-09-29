@@ -1,38 +1,29 @@
-# Architecture
+# Monorepo architecture
 
 ## Runtime boundary
 
 ```text
-MAX User
-  ├─ Bot ───────────→ MAX Bot Transport Adapter ─────┐
-  └─ Mini App ──────→ MAX Bridge + Mini App Host ────┤
-                                                      ↓
-                                        Future application integration boundary
-                                            [not implemented in this phase]
-                                                      ↓
-                                         Andromeda Public API v1
-                                                [NEXT PHASE]
-
-Shared MAX infrastructure (config, logging, security and Redis state) supports both adapters.
+MAX Bot ───────┐
+MAX Mini App ──┼── HTTP / Public API v1 ── Andromeda backend
+Web ───────────┘                             modular monolith
 ```
 
-The repository is a small Node.js modular application. `src/max` owns MAX protocol normalization, SDK access, callbacks, Webhook/polling and deep links. `src/shared` contains bounded configuration, safe errors, redacting logs and ephemeral transport state. `src/web` hosts only the static Mini App shell, health routes and MAX launch proof verification. `miniapp` is a static MAX Bridge adapter and presentational shell.
+The repository contains two runtime applications, not two business backends. `apps/max` adapts MAX updates and Mini App launch data to channel-neutral behavior. `services/andromeda` owns the Public API, PostgreSQL, canonical education data, query sessions, admission and policy decisions, source provenance, and optional AI adapters.
 
-The MAX platform user ID is not an Andromeda account ID, role, session or authorization grant. `initDataUnsafe` is never used. The Mini App endpoint returns only `{ authenticated: true }`; no account linking, cookie, product data, business command or Andromeda API call exists yet.
+MAX Bot uses only `POST /api/v1/assistant/query`. Its TypeScript wire types are generated from [`services/andromeda/openapi.json`](../services/andromeda/openapi.json), the canonical Public API v1 contract. The frontend's full-application OpenAPI snapshot is not a MAX contract. Internal `/ops`, university-admin and knowledge-review routes stay outside the public client boundary.
 
-Redis is the production shared state owner for rate counters, update leases/completion and one-time deep-link references. Process memory state is bounded and only available in explicit development/test composition. The Bot SDK is accessed in one adapter; subject behavior does not import the SDK.
+## Ownership and identity
 
-## Transport and lifecycle
+- Andromeda owns `QuerySession` state and its PostgreSQL persistence. The Bot carries only its ID and expected revision between turns.
+- MAX transport state stores the opaque Andromeda guest-profile cookie, session ID/revision and activity time in Redis. It stores no transcript or applicant profile.
+- A MAX platform user ID is transient input used only to derive a one-way hashed Redis state key. It is not sent to Andromeda or used as Andromeda identity or authorization.
+- MAX renders typed assistant text, status, evidence summaries and action labels. It does not interpret policy, calculate admission results, inspect response data/metadata, or call Jev/LLM providers.
+- The Mini App is currently an authenticated-launch shell. Product data and assistant views remain future work.
 
-Bot polling processes updates sequentially and advances the polling marker only after the batch succeeds. Webhook handling authenticates a bounded request and acknowledges only after processing completes. Startup checks the current MAX webhook subscription and does not delete a conflicting subscription. Shutdown does not mutate remote MAX subscription state.
+## AI boundary
 
-The Mini App server has an explicit static-file allowlist, response-size bound, origin allowlist, CSP, and server-side HMAC verification of launch `initData`. Browser data is sent only in a same-origin request header and is not placed in a URL, log, local storage or cookie.
+Deterministic Andromeda services decide applicability and domain outcomes. Jev remains an optional bounded resolver under Andromeda's existing registry and calibration gates. An optional backend presentation adapter may naturalize an already typed source-backed response; its output is validated and falls back to deterministic wording. An outside-coverage response is explicitly unverified. Neither MAX transport nor an LLM can write canonical facts or policy.
 
-## Deliberately absent
+## Verification boundary
 
-- Andromeda Public API client, API proxy or backend route.
-- Product screens, comparison, admission workflows, account linking or persistence of applicant context.
-- Additional bounded contexts, database, queue platform or microservices.
-- MAX Bot command semantics beyond neutral status/help replies.
-
-Future API calls must use the separately approved Public API v1 contract. Bot and Mini App should remain channel-specific adapters over the same eventual application contract.
+The disposable E2E Compose project exercises PostgreSQL fixture ingestion, Redis-backed MAX session mapping, and real HTTP calls to the Public API. It uses isolated project names, dynamically selected loopback ports, and project-scoped cleanup. Regular `stack down` preserves the developer's named volumes; E2E cleanup removes only its own temporary volumes.

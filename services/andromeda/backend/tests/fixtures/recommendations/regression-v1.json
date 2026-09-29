@@ -1,0 +1,179 @@
+{
+  "corpus_version": "recommendations-regression.v1",
+  "policy_version": "content-fit.v1",
+  "taxonomy_version": "taxonomy-22.v1",
+  "cases": [
+    {
+      "id": "software-direction",
+      "profile": {
+        "subject": {
+          "computer_science_data": "0.7",
+          "mathematics_statistics": "0.3"
+        },
+        "activity": {
+          "software_creation": "1"
+        },
+        "negative": {}
+      },
+      "programs": [
+        {
+          "code": "09.03.01-02",
+          "areas": {
+            "computer_science_data": "0.8",
+            "mathematics_statistics": "0.2"
+          },
+          "activities": {
+            "software_creation": "1"
+          },
+          "source_state": "complete"
+        },
+        {
+          "code": "38.03.01-01",
+          "areas": {
+            "economics_finance": "0.7",
+            "business_management": "0.3"
+          },
+          "activities": {
+            "business": "1"
+          },
+          "source_state": "complete"
+        }
+      ],
+      "expected_top_code": "09.03.01-02",
+      "expected_catalog_status": "available",
+      "required_signals": [
+        "profile_subject_preference",
+        "profile_activity_preference",
+        "curriculum_area_share",
+        "curriculum_activity_mapping"
+      ],
+      "reviewer_rationale": "Subject and activity preferences point to the software-oriented curriculum."
+    },
+    {
+      "id": "physics-anti-interest",
+      "profile": {
+        "subject": {
+          "computer_science_data": "1"
+        },
+        "activity": {},
+        "negative": {
+          "physics_astronomy": "1"
+        }
+      },
+      "programs": [
+        {
+          "code": "09.03.01-02",
+          "areas": {
+            "computer_science_data": "0.8",
+            "mathematics_statistics": "0.2"
+          },
+          "activities": {
+            "software_creation": "1"
+          },
+          "source_state": "complete"
+        },
+        {
+          "code": "09.03.01-12",
+          "areas": {
+            "physics_astronomy": "0.8",
+            "engineering_technology": "0.2"
+          },
+          "activities": {
+            "physical_engineering": "1"
+          },
+          "source_state": "complete"
+        }
+      ],
+      "expected_top_code": "09.03.01-02",
+      "anti_interest_codes": [
+        "09.03.01-12"
+      ],
+      "expected_catalog_status": "available",
+      "required_signals": [
+        "profile_anti_interest",
+        "curriculum_area_share"
+      ],
+      "reviewer_rationale": "A strong physics anti-interest must penalize the physics-heavy option."
+    },
+    {
+      "id": "missing-curriculum-source",
+      "profile": {
+        "subject": {
+          "computer_science_data": "1"
+        },
+        "activity": {
+          "software_creation": "1"
+        },
+        "negative": {}
+      },
+      "programs": [
+        {
+          "code": "09.03.01-02",
+          "areas": {
+            "computer_science_data": "0.8",
+            "mathematics_statistics": "0.2"
+          },
+          "activities": {
+            "software_creation": "1"
+          },
+          "source_state": "missing"
+        },
+        {
+          "code": "09.03.01-12",
+          "areas": {
+            "computer_science_data": "0.2",
+            "mathematics_statistics": "0.8"
+          },
+          "activities": {
+            "data": "1"
+          },
+          "source_state": "complete"
+        }
+      ],
+      "expected_top_code": "09.03.01-02",
+      "expected_catalog_status": "not_available",
+      "expected_gap_codes": [
+        "curriculum_source_missing"
+      ],
+      "reviewer_rationale": "The candidate may remain visible for Content Fit, but its curriculum evidence must be explicitly unavailable."
+    },
+    {
+      "id": "stable-program-code-tie-break",
+      "profile": {
+        "subject": {
+          "computer_science_data": "0.5",
+          "mathematics_statistics": "0.5"
+        },
+        "activity": {},
+        "negative": {}
+      },
+      "programs": [
+        {
+          "code": "09.03.01-02",
+          "areas": {
+            "computer_science_data": "0.5",
+            "mathematics_statistics": "0.5"
+          },
+          "activities": {
+            "software_creation": "1"
+          },
+          "source_state": "complete"
+        },
+        {
+          "code": "09.03.01-01",
+          "areas": {
+            "computer_science_data": "0.5",
+            "mathematics_statistics": "0.5"
+          },
+          "activities": {
+            "software_creation": "1"
+          },
+          "source_state": "complete"
+        }
+      ],
+      "expected_top_code": "09.03.01-01",
+      "expected_catalog_status": "available",
+      "reviewer_rationale": "Equal semantic scores must use the documented program-code tie-break."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "taxonomy_version": "taxonomy-22.v1",
+  "cases": [
+    {"name": "Математический анализ", "primary_area": "mathematics_statistics"},
+    {"name": "Программирование", "primary_area": "computer_science_data"},
+    {"name": "Физика", "primary_area": "physics_astronomy"},
+    {"name": "Химия", "primary_area": "chemistry_materials"},
+    {"name": "Биология", "primary_area": "biology_biotechnology"},
+    {"name": "Экология", "primary_area": "earth_environment"},
+    {"name": "Инженерные технологии", "primary_area": "engineering_technology"},
+    {"name": "Архитектура", "primary_area": "architecture_construction"},
+    {"name": "Агрономия", "primary_area": "agriculture_veterinary"},
+    {"name": "Медицина", "primary_area": "medicine_health"},
+    {"name": "Психология", "primary_area": "psychology_cognitive"},
+    {"name": "Социология", "primary_area": "society_social_sciences"},
+    {"name": "Экономика", "primary_area": "economics_finance"},
+    {"name": "Менеджмент", "primary_area": "business_management"},
+    {"name": "Право", "primary_area": "law_policy_public_administration"},
+    {"name": "Иностранный язык", "primary_area": "languages_linguistics_literature"},
+    {"name": "История", "primary_area": "history_philosophy_humanities"},
+    {"name": "Дизайн", "primary_area": "art_design_media"},
+    {"name": "Педагогика", "primary_area": "education_pedagogy"},
+    {"name": "Спорт", "primary_area": "sport_tourism_hospitality"},
+    {"name": "Безопасность", "primary_area": "safety_defense_transport"},
+    {"name": "Практика", "primary_area": "universal_interdisciplinary"},
+    {"name": "Квантовая физика", "primary_area": "physics_astronomy"},
+    {"name": "Неизвестная дисциплина 9000", "method": "unresolved", "primary_area": "universal_interdisciplinary"}
+  ]
+}

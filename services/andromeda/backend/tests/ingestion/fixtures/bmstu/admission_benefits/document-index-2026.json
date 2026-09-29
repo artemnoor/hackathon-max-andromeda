@@ -1,0 +1,67 @@
+{
+  "slug": "admission-committee-documents",
+  "content": {
+    "document-list": [
+      {
+        "title": "Правила приема в МГТУ им. Н.Э. Баумана",
+        "documents": [
+          {
+            "id": 182,
+            "title": "Правила приема 2026",
+            "url": "https://api.www.bmstu.ru/file/124642/download"
+          },
+          {
+            "id": 189,
+            "title": "Приложение 5. Порядок предоставления особых прав победителям и призёрам олимпиад школьников",
+            "url": "https://api.www.bmstu.ru/file/122219/download"
+          },
+          {
+            "id": 190,
+            "title": "Приложение 5.1. Особое право приёма БВИ (г. Москва)",
+            "url": "https://api.www.bmstu.ru/file/124777/download"
+          },
+          {
+            "id": 191,
+            "title": "Приложение 5.2. Особое право приёма БВИ (Калужский и Мытищинский филиал)",
+            "url": "https://api.www.bmstu.ru/file/122143/download"
+          },
+          {
+            "id": 315,
+            "title": "Приложение 5.3 Соответствие олимпиад для 100 баллов ",
+            "url": "https://api.www.bmstu.ru/file/122150/download"
+          },
+          {
+            "id": 201,
+            "title": "Приложение 5.4. Соответствие для Всероссийской олимпиады школьников",
+            "url": "https://api.www.bmstu.ru/file/122149/download"
+          },
+          {
+            "id": 1088,
+            "title": "Приложение 5.5. Соответствие для Международной олимпиады школьников",
+            "url": "https://api.www.bmstu.ru/file/122151/download"
+          },
+          {
+            "id": 192,
+            "title": "Приложение 6. Перечень индивидуальных достижений при поступлении на 1-й курс бакалавриата и специалитета ",
+            "url": "https://api.www.bmstu.ru/file/125465/download"
+          },
+          {
+            "id": 193,
+            "title": "Приложение 7. Перечень индивидуальных достижений при поступлении на 1-й курс магистратуры ",
+            "url": "https://api.www.bmstu.ru/file/124926/download"
+          },
+          {
+            "id": 194,
+            "title": "Приложение 8.1. Перечень НП(С) при приёме на 1-й курс",
+            "url": "https://api.www.bmstu.ru/file/125049/download"
+          },
+          {
+            "id": 307,
+            "title": "Приложение 8.3. Детализированная целевая квота ",
+            "url": "https://api.www.bmstu.ru/file/124757/download"
+          }
+        ]
+      }
+    ]
+  }
+}

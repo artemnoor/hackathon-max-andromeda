@@ -1,63 +1,43 @@
-# Hackathon MAX Andromeda
+# Andromeda MAX Hackathon Monorepo
 
-Отдельный transport foundation для последующей реализации MAX Bot и MAX Mini App Andromeda. Репозиторий содержит только MAX transport runtime и Mini App shell. Основной Andromeda backend и Public API v1 живут в отдельном репозитории; соединение с ними пока не реализовано.
-
-## Что уже есть
-
-- MAX Bot polling/Webhook lifecycle с idempotent update handling и нейтральными `/start`/`/help` ответами.
-- Проверка MAX Mini App `initData` на сервере; оболочка не создаёт сессию Andromeda и не сохраняет личные данные.
-- Redis-backed rate limit, update leases и one-time deep-link state.
-- Hardened MAX API fetch, URL allowlist, structured redacting logs, CSP и bounded static host.
-- Docker Compose для локального Bot, Mini App и Redis; GitHub Actions CI.
-
-## Границы продукта
-
-Это не готовый бот Andromeda: команды не вызывают backend и не содержат приёмных сценариев. Здесь нет Andromeda API client, авторизации/связки аккаунта, бизнес-логики, личного маршрута или product navigation. Эти границы описаны в [architecture](docs/architecture.md).
-
-## Архитектура
+Единый standalone repository для MAX-хакатона: MAX transport живёт в `apps/max`, Andromeda — в `services/andromeda`. MAX обращается к backend только по HTTP через Public API v1 и использует сгенерированный из canonical OpenAPI контракт. Совместное хранение в Git не создаёт прямой import-зависимости между TypeScript transport и Python backend.
 
 ```text
-MAX User
-   ├── Bot ───────→ MAX Bot Transport Adapter ──┐
-   └── Mini App ─→ MAX Bridge + Mini App Host ──┤
-                                                ↓
-                                  Future application integration boundary
-                                      [not implemented in this phase]
-                                                ↓
-                                     Andromeda Public API v1
-                                          [NEXT PHASE]
-
-Shared MAX infrastructure supports both transport adapters.
+MAX Bot ───────┐
+MAX Mini App ──┼── HTTP / Public API v1 ── Andromeda modular monolith
+Web ───────────┘                              ├── PostgreSQL
+                                              ├── deterministic domain services
+                                              └── bounded Jev / optional presentation
 ```
 
-Текущая структура намеренно содержит только работающие контуры:
+## Repository layout
 
-```text
-src/
-  entrypoints/   # Bot и Mini App process composition
-  max/           # MAX Bot, auth, callbacks, client, deep links, webhook
-  shared/        # config, errors, logging, URL policy, Redis state
-  web/           # bounded Mini App host и CSP
-miniapp/         # MAX Bridge adapter и статическая оболочка
-tests/           # unit, HTTP integration и Playwright browser tests
-```
+- [`apps/max/`](apps/max/): MAX Bot, Mini App shell, transport state, tests and generated Public API client.
+- [`services/andromeda/`](services/andromeda/): Python backend, PostgreSQL model/migrations, Web app, ingestion, canonical OpenAPI and DATA-API assets.
+- [`UPSTREAM_ANDROMEDA.md`](UPSTREAM_ANDROMEDA.md): imported source SHA and reviewed snapshot-sync procedure.
 
-Будущая integration boundary показана на схеме, но её package, Andromeda client и API calls здесь пока отсутствуют.
+MAX must not import Andromeda Python, database, Jev or provider internals. Backend business behavior remains behind `/api/v1/*`; MAX platform identifiers are not Andromeda identities or authorization.
 
-## Локальный запуск
+## Local development
 
-Требуются Node.js 22+, npm и Docker Compose. Скопируйте `.env.example` в `.env`, задайте тестовый/реальный `MAX_BOT_TOKEN`, затем запустите `docker compose up --build`. Mini App будет доступен на `http://localhost:8787`; Bot использует MAX polling transport. Никогда не коммитьте `.env`.
-
-Runtime использует `MAX_BOT_TOKEN`, официальный `MAX_API_BASE_URL`, `MINI_APP_ORIGINS`, `MAX_INIT_DATA_TTL_SECONDS` и `REDIS_URL`; webhook и signing-key параметры нужны только для соответствующего transport/deployment режима. Полный перечень с безопасными примерами находится в [`.env.example`](.env.example).
-
-Для запуска без контейнеров используйте [development guide](docs/development.md). Для текущего поведения и проверок — [testing guide](docs/testing.md), для production deployment prerequisites — [deployment guide](docs/deployment.md).
-
-Основная локальная проверка:
+See [`apps/max/docs/development.md`](apps/max/docs/development.md) for MAX setup and [`services/andromeda/README.md`](services/andromeda/README.md) for backend prerequisites and fixture-backed operation. From the repository root, use:
 
 ```powershell
-npm ci
-npx playwright install chromium
-npm run verify
+python scripts/monorepo.py max
+python scripts/monorepo.py andromeda
+python scripts/monorepo.py contracts
+python scripts/monorepo.py full
+python scripts/monorepo.py e2e
 ```
 
-MAX Bot и Mini App transport foundation готовы к отдельному этапу проектирования их функциональных границ. Не вводите backend routes или frontend API calls, пока эти границы и Public API integration contract не утверждены.
+Copy the root `.env.example` to `.env` for local Compose overrides. Start the fixture-backed PostgreSQL, Redis and Andromeda API with `python scripts/monorepo.py stack up --fixtures`. Add `--max` after setting `MAX_BOT_TOKEN` to start the real MAX Bot and Mini App profile. `python scripts/monorepo.py stack down` preserves database/cache volumes; pass `--volumes` only when you explicitly want to erase this local state. `full` validates Compose without starting services or requiring provider credentials.
+
+`python scripts/monorepo.py e2e` creates a disposable, uniquely named Compose project with fixture-seeded PostgreSQL, Redis and Andromeda, runs the MAX-to-Public-API HTTP/session integration suite plus the Andromeda and MAX browser checks, then removes only that E2E project's containers and temporary volumes. Docker Engine must be running. The six assistant scenarios use deterministic fixtures and do not call Jev, DeepSeek, MAX or university sites.
+
+Use fixture-backed data for deterministic local checks. Live university sources and paid AI providers are optional and are not substitutes for the deterministic test suite. Never commit `.env` files, tokens, cookies, MAX update payloads or applicant profiles.
+
+## API contracts and licenses
+
+The canonical Public API v1 contract is [`services/andromeda/openapi.json`](services/andromeda/openapi.json). MAX DTOs are generated from that file; update the backend export, generated client and drift evidence together. Internal `/ops` and review APIs are not MAX contracts. The MAX and Andromeda source trees retain their respective license notices in their package roots.
+
+See [`docs/architecture.md`](docs/architecture.md) for module and transport ownership and [`docs/development.md`](docs/development.md) for environment setup, fixture E2E, contract generation and verification commands.

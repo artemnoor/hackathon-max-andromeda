@@ -1,0 +1,9 @@
+{
+  "source_url": "https://priem.bmstu.ru/lists/upload/orders/sample.pdf",
+  "content_sha256": "5ca264bf3d5ec2d279246c7b70e18cb820d01d8bc8af4b283a301dd982979f51",
+  "locator": "page=1;section=admitted-without-exams",
+  "canonical_source": false,
+  "fixture_text": "Сведения о зачисленных\nПеречень зачисленных без вступительных испытаний на направление 01.03.02\nКод ЕПГУ: 7; Без проведения вступительных испытаний;",
+  "observation": {"competition_type": "bvi", "status": "bvi", "score": null},
+  "note": "Contract guard fixture only; historical observations are not admission-benefit eligibility rules. Replace with a captured official order snapshot before using as production evidence."
+}

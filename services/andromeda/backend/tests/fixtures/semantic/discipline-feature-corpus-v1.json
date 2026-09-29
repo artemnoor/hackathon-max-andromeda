@@ -1,0 +1,30 @@
+[
+  {
+    "case": "math-and-ai",
+    "source_name": "Математическая статистика и машинное обучение",
+    "expected_available": ["mathematics", "statistics", "ai_ml"],
+    "expected_unresolved": false,
+    "review_label": "needs_review"
+  },
+  {
+    "case": "programming",
+    "source_name": "Программирование на Python",
+    "expected_available": ["programming"],
+    "expected_unresolved": false,
+    "review_label": "unreviewed"
+  },
+  {
+    "case": "physics",
+    "source_name": "Общая физика",
+    "expected_available": ["physics"],
+    "expected_unresolved": false,
+    "review_label": "unreviewed"
+  },
+  {
+    "case": "unresolved",
+    "source_name": "История древнего мира",
+    "expected_available": [],
+    "expected_unresolved": true,
+    "review_label": "needs_review"
+  }
+]

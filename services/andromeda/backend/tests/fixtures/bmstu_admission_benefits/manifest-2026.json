@@ -1,0 +1,208 @@
+{
+  "university_id": "university:bmstu",
+  "admission_year": 2026,
+  "canonical_source_policy": "official_source_only",
+  "documents": [
+    {
+      "kind": "rules",
+      "title": "Правила приема в МГТУ им. Н.Э. Баумана в 2026 году",
+      "source_url": "https://api.www.bmstu.ru/file/124642/download",
+      "content_sha256": "896aab990a108da327b19c48e091b57f7aab3faedb8e64a9be14b1b810d0c9f6",
+      "locator": "section=4.1;page=35",
+      "extract_file": "rules-2026.extract.json"
+    },
+    {
+      "kind": "appendix_5_1",
+      "title": "Приложение 5.1. Особое право приема БВИ (г. Москва)",
+      "source_url": "https://api.www.bmstu.ru/file/124777/download",
+      "content_sha256": "f76eb91353b83c0fdf7773fffa768c5d9fde69ade6ff94bb3192f70b29f47941",
+      "locator": "pages=1,4;table=1;rows=8,17,55",
+      "extract_file": "appendix-5-1.rows.json"
+    },
+    {
+      "kind": "appendix_5_2",
+      "title": "Приложение 5.2. Особое право приёма БВИ (Калужский и Мытищинский филиал)",
+      "source_url": "https://api.www.bmstu.ru/file/122143/download",
+      "content_sha256": "e52fcd0aa153efbe64fa38dcf44857f0a0aab450375705272e71bd3f77e0f761",
+      "locator": "page=1;table=1;row=1",
+      "extract_file": "appendix-5-2.rows.json"
+    },
+    {
+      "kind": "appendix_5_3",
+      "title": "Приложение 5.3. Соответствие олимпиад для 100 баллов",
+      "source_url": "https://api.www.bmstu.ru/file/122150/download",
+      "content_sha256": "3a59ad1e5d900f4e8bb67e58ef3e8a0421d52666f02cfa9c09abb6747ded2c6f",
+      "locator": "page=1;table=1;rows=1,2,4",
+      "extract_file": "appendix-5-3.rows.json"
+    },
+    {
+      "kind": "appendix_6",
+      "title": "Приложение 6. Перечень индивидуальных достижений при поступлении на 1-й курс",
+      "source_url": "https://api.www.bmstu.ru/file/125465/download",
+      "content_sha256": "5ae90e108dc8940b37fe3b07f211664b7871791792abdc6ddc0dd365fb948bb9",
+      "locator": "pages=1-7;table=1;rows=1-46;policy_sections=2-4;fixture_rows=1,5",
+      "extract_file": "appendix-6.rows.json"
+    },
+    {
+      "kind": "official_olympiad_html",
+      "title": "Олимпиада школьников «Шаг в будущее» по профилю «Инженерное дело»",
+      "source_url": "https://olymp.bmstu.ru/ru/engeneering-olymp",
+      "content_sha256": "ad06f329dcb2998878d89c5f1bae08d72dbd808d84b7a06f12c13a715276fd1c",
+      "locator": "main;section=about",
+      "extract_file": "shag-engineering.html.extract.json"
+    },
+    {
+      "kind": "official_olympiad_html",
+      "title": "Олимпиада школьников «Шаг в будущее»: страница профиля Программирование (Информатика)",
+      "source_url": "https://olymp.bmstu.ru/ru/programming-olymp",
+      "content_sha256": "d37c8fb4275c8f533a7136282f0ebb6ae82fc41699570ca14fbeb298af195530",
+      "locator": "main;section=admission-benefit-2026",
+      "extract_file": "shag-programming.html.extract.json"
+    }
+  ],
+  "live_discovery": {
+    "captured_at": "2026-09-23",
+    "index_url": "https://api.www.bmstu.ru/page/admission-committee-documents",
+    "index_status": 200,
+    "index_sha256": "10e11fd3ead42af411304d7def7d38339ef1fc4c9ec8ede0b6a9d983b6e9e5a3",
+    "selected_documents": 11,
+    "fetched_documents": 11,
+    "failed_documents": 0,
+    "unresolved_required_documents": 0,
+    "unselected_index_entries": 12,
+    "diagnostics": [
+      "duplicate_document_kind:rules:182:1140",
+      "duplicate_document_kind:rules:182:1413"
+    ],
+    "documents": [
+      {"kind": "rules", "index_id": 182, "title": "Правила приема 2026", "source_url": "https://api.www.bmstu.ru/file/124642/download", "content_sha256": "896aab990a108da327b19c48e091b57f7aab3faedb8e64a9be14b1b810d0c9f6"},
+      {"kind": "appendix_5", "index_id": 189, "title": "Приложение 5. Порядок предоставления особых прав победителям и призёрам олимпиад школьников", "source_url": "https://api.www.bmstu.ru/file/122219/download", "content_sha256": "e644901c8bdcec1105952c59aad7cc42f7968f035b9a4f85de99e010b4debb56"},
+      {"kind": "appendix_5_1", "index_id": 190, "title": "Приложение 5.1. Особое право приёма БВИ (г. Москва)", "source_url": "https://api.www.bmstu.ru/file/124777/download", "content_sha256": "f76eb91353b83c0fdf7773fffa768c5d9fde69ade6ff94bb3192f70b29f47941"},
+      {"kind": "appendix_5_2", "index_id": 191, "title": "Приложение 5.2. Особое право приёма БВИ (Калужский и Мытищинский филиал)", "source_url": "https://api.www.bmstu.ru/file/122143/download", "content_sha256": "e52fcd0aa153efbe64fa38dcf44857f0a0aab450375705272e71bd3f77e0f761"},
+      {"kind": "appendix_5_3", "index_id": 315, "title": "Приложение 5.3 Соответствие олимпиад для 100 баллов", "source_url": "https://api.www.bmstu.ru/file/122150/download", "content_sha256": "3a59ad1e5d900f4e8bb67e58ef3e8a0421d52666f02cfa9c09abb6747ded2c6f"},
+      {"kind": "appendix_5_4", "index_id": 201, "title": "Приложение 5.4. Соответствие для Всероссийской олимпиады школьников", "source_url": "https://api.www.bmstu.ru/file/122149/download", "content_sha256": "3302e26b3b0e0ddff42326a5c3d02063f5fcc111485e9fd8c91020df79c2af90"},
+      {"kind": "appendix_5_5", "index_id": 1088, "title": "Приложение 5.5. Соответствие для Международной олимпиады школьников", "source_url": "https://api.www.bmstu.ru/file/122151/download", "content_sha256": "d70e0bd66e233d458b4ce1d37856f1460781fdc988a68b66be231cce1e7a0266"},
+      {"kind": "appendix_6", "index_id": 192, "title": "Приложение 6. Перечень индивидуальных достижений при поступлении на 1-й курс бакалавриата и специалитета", "source_url": "https://api.www.bmstu.ru/file/125465/download", "content_sha256": "5ae90e108dc8940b37fe3b07f211664b7871791792abdc6ddc0dd365fb948bb9"},
+      {"kind": "appendix_7", "index_id": 193, "title": "Приложение 7. Перечень индивидуальных достижений при поступлении на 1-й курс магистратуры", "source_url": "https://api.www.bmstu.ru/file/124926/download", "content_sha256": "2ee7ae4da978c862c73dd72a8bb53b673827614162cb939f7ab7986432bb30b3"},
+      {"kind": "appendix_8_1", "index_id": 194, "title": "Приложение 8.1. Перечень НП(С) при приёме на 1-й курс", "source_url": "https://api.www.bmstu.ru/file/125049/download", "content_sha256": "cfc63d7061787c409de9e75f90f9384c4d60400a18b1bcb2e6bd4643f631c62f"},
+      {"kind": "appendix_8_3", "index_id": 307, "title": "Приложение 8.3. Детализированная целевая квота", "source_url": "https://api.www.bmstu.ru/file/124757/download", "content_sha256": "bd9fabed7868d9de835af0c75bb050ab987d65dd9932c92bcde64ad3989d66ce"}
+    ],
+    "profile_sources": [
+      {"kind": "official_olympiad_profile", "profile": "Инженерное дело", "source_url": "https://olymp.bmstu.ru/ru/engeneering-olymp", "content_sha256": "ad06f329dcb2998878d89c5f1bae08d72dbd808d84b7a06f12c13a715276fd1c", "locator": "main;section=about", "legal_mapping_note": "The page lists math, physics, informatics, and chemistry but says the exact academic subject depends on the selected section; do not activate one subject without that section."},
+      {"kind": "official_olympiad_profile", "profile": "Программирование (page title: Информатика)", "source_url": "https://olymp.bmstu.ru/ru/programming-olymp", "content_sha256": "d37c8fb4275c8f533a7136282f0ebb6ae82fc41699570ca14fbeb298af195530", "locator": "main;section=admission-benefit-2026", "legal_mapping_note": "The 2025-2026 official winners list names the profile Программирование; this profile page is titled Информатика, lists RSOSH level 3 and states 2026 winner/prize-winner BVI scope. Do not treat this as a general alias for unrelated profile names."}
+    ],
+    "verified_source_interpretations": {
+      "literal_reference_5_3_6": {"found": false, "searched_documents": 11, "scope_note": "The current 2026 set contains Appendix 5.3 and a separate Appendix 6; no literal 5.3.6 marker was found."},
+      "rules_section_1_12": {
+        "general_confirmation_minimum": 75,
+        "conditional_confirmation_minimum": 65,
+        "conditional_applicant_category": "graduates_from_DNR_LNR_Zaporizhzhia_Kherson",
+        "locator": "page=12;section=1.12",
+        "policy_note": "Do not apply the 65-point threshold unless the applicant explicitly confirms the source-defined category."
+      },
+      "appendix_5_2": {
+        "scope_text": "все НП(С) КФ и МФ",
+        "campuses": ["Kaluga", "Mytishchi"],
+        "applies_to_moscow": false,
+        "locator": "page=1;table=1;row=1"
+      },
+      "shag_programming_profile": {
+        "profile_name_in_official_winners_list": "Программирование",
+        "official_profile_page_title": "Информатика",
+        "corresponding_subject": "информатика",
+        "rsosh_level": 3,
+        "bvi_2026_winner_scope": "all",
+        "bvi_2026_prize_scope_excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"],
+        "profile_page_sha256": "d37c8fb4275c8f533a7136282f0ebb6ae82fc41699570ca14fbeb298af195530",
+        "profile_page_locator": "main;section=admission-benefit-2026",
+        "profile_name_cross_reference_url": "https://olymp.bmstu.ru/ru/winners/list/2026",
+        "profile_name_cross_reference_locator": "table;row=Программирование"
+      },
+      "appendix_6": {
+        "numbered_entries": 46,
+        "table_pages": [1, 2, 3, 4, 5, 6, 7],
+        "combination_policy": "additive_across_distinct_achievements",
+        "global_max_points": 10,
+        "combination_locator": "page=7;section=2",
+        "deduplication_policy": "a basis is claimed once; duplicate bases across categories do not add points; each category is awarded at most once",
+        "deduplication_locator": "page=8;section=4",
+        "fixture_is_full_list": false,
+        "fixture_rows": [1, 5]
+      }
+    }
+  },
+  "verification_cases": [
+    {
+      "id": "shag-winner-bvi-all-except",
+      "source": "appendix_5_1",
+      "locator": "page=4;table=1;row=55",
+      "expected": {"result_type": "winner", "benefit_type": "bvi", "scope_mode": "all_except", "excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]}
+    },
+    {
+      "id": "shag-prize-bvi-all-except",
+      "source": "appendix_5_1",
+      "locator": "page=4;table=1;row=55",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "scope_mode": "all_except", "excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]}
+    },
+    {
+      "id": "high-proba-winner-bvi-only",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=8",
+      "expected": {"result_type": "winner", "benefit_type": "bvi", "scope_mode": "only", "directions": ["01.03.02", "09.03.04"]}
+    },
+    {
+      "id": "high-proba-prize-bvi-only",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=8",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "scope_mode": "only", "directions": ["01.03.02", "09.03.04"]}
+    },
+    {
+      "id": "city-physics-prize-not-granted",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=17",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "rule_present": false, "grant": "not_provided"}
+    },
+    {
+      "id": "formula-winner-100-math",
+      "source": "appendix_5_3",
+      "locator": "page=1;table=1;row=2",
+      "expected": {"result_type": "winner", "benefit_type": "one_hundred_points", "target_subject": "математика", "confirmation_subject": "математика", "confirmation_min_score": "75", "status": "review_required_program_scope"}
+    },
+    {
+      "id": "formula-prize-100-math",
+      "source": "appendix_5_3",
+      "locator": "page=1;table=1;row=2",
+      "expected": {"result_type": "prize_winner", "benefit_type": "one_hundred_points", "target_subject": "математика", "confirmation_subject": "математика", "confirmation_min_score": "75", "status": "review_required_program_scope"}
+    },
+    {
+      "id": "attestat-with-distinction-10",
+      "source": "appendix_6",
+      "locator": "page=1;table=1;row=1",
+      "expected": {"achievement_name": "Аттестат о среднем общем образовании с отличием", "points": "10"}
+    },
+    {
+      "id": "gold-gtо-5",
+      "source": "appendix_6",
+      "locator": "page=2;table=1;row=5",
+      "expected": {"achievement_name": "Золотой знак ГТО", "points": "5"}
+    },
+    {
+      "id": "historical-bvi-observation-is-not-rule",
+      "source": "historical_test_observation",
+      "locator": "page=1;section=admitted-without-exams",
+      "expected": {"competition_type": "bvi", "status": "bvi", "legal_eligibility_rule": false}
+    },
+    {
+      "id": "appendix-52-is-limited-to-kaluga-and-mytishchi-branches",
+      "source": "appendix_5_2",
+      "locator": "page=1;table=1;row=1",
+      "expected": {"scope_mode": "all", "campuses": ["Kaluga", "Mytishchi"], "result_types": ["winner", "prize_winner"], "applies_to_moscow": false}
+    },
+    {
+      "id": "shag-programming-live-profile-page-2026",
+      "source": "official_olympiad_html",
+      "locator": "main;section=admission-benefit-2026",
+      "expected": {"profile": "Программирование", "subject": "информатика", "rsosh_level": 3, "winner_scope": "all", "prize_exclusions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]}
+    }
+  ]
+}

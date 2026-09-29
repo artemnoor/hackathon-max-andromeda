@@ -1,0 +1,42 @@
+name: andromeda-postgres
+
+services:
+  postgres-dev:
+    image: postgres:16-alpine
+    profiles: ["development"]
+    environment:
+      POSTGRES_DB: ${ANDROMEDA_DEV_DB:?Set ANDROMEDA_DEV_DB}
+      POSTGRES_USER: ${ANDROMEDA_DEV_DB_USER:?Set ANDROMEDA_DEV_DB_USER}
+      POSTGRES_PASSWORD: ${ANDROMEDA_DEV_DB_PASSWORD:?Set ANDROMEDA_DEV_DB_PASSWORD}
+    ports:
+      - "${ANDROMEDA_DEV_PORT:-5432}:5432"
+    volumes:
+      - andromeda-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ANDROMEDA_DEV_DB_USER:?Set ANDROMEDA_DEV_DB_USER} -d ${ANDROMEDA_DEV_DB:?Set ANDROMEDA_DEV_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  postgres-staging:
+    image: postgres:16-alpine
+    profiles: ["staging"]
+    environment:
+      POSTGRES_DB: ${ANDROMEDA_STAGING_DB:?Set ANDROMEDA_STAGING_DB}
+      POSTGRES_USER: ${ANDROMEDA_STAGING_DB_USER:?Set ANDROMEDA_STAGING_DB_USER}
+      POSTGRES_PASSWORD: ${ANDROMEDA_STAGING_DB_PASSWORD:?Set ANDROMEDA_STAGING_DB_PASSWORD}
+    ports:
+      - "${ANDROMEDA_STAGING_PORT:-5433}:5432"
+    volumes:
+      - andromeda-staging-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ANDROMEDA_STAGING_DB_USER:?Set ANDROMEDA_STAGING_DB_USER} -d ${ANDROMEDA_STAGING_DB:?Set ANDROMEDA_STAGING_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+volumes:
+  andromeda-dev-data:
+  andromeda-staging-data:

@@ -1,0 +1,8 @@
+{
+  "canonicalOpenApi": "services/andromeda/openapi.json",
+  "formatVersion": 1,
+  "generationCommand": "npm --prefix apps/max run generate:andromeda-client",
+  "generator": "openapi-typescript@7.13.0",
+  "openapiSha256": "bbe2b49661d13fcadbb9849009c02c6493dce40e62961613fd0a8da3fe1ec70e",
+  "upstreamAndromedaCommit": "e8118b611220320f17ab60e936455680441e004d"
+}

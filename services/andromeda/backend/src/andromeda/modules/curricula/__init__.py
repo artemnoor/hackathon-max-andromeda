@@ -1,0 +1,1 @@
+"""Public curriculum module surface."""

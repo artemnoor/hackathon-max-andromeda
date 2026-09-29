@@ -1,0 +1,424 @@
+"""Cross-platform orchestration for the Andromeda MAX monorepo."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Mapping, Sequence
+from urllib.error import URLError
+from urllib.request import urlopen
+
+ROOT = Path(__file__).resolve().parents[1]
+MAX_ROOT = ROOT / "apps" / "max"
+ANDROMEDA_ROOT = ROOT / "services" / "andromeda"
+ANDROMEDA_BACKEND = ANDROMEDA_ROOT / "backend"
+
+_FIXTURE_CATALOG_DIAGNOSTIC = """
+import json
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+from andromeda.infrastructure.config import Settings, redact_database_url
+from andromeda.infrastructure.database import create_engine_for_url
+from andromeda.infrastructure.database.models import IngestRunModel, ProgramModel, UniversityModel
+
+settings = Settings.from_environment()
+engine = create_engine_for_url(settings.database_url)
+try:
+    with Session(engine) as session:
+        ids = session.scalars(select(UniversityModel.id).order_by(UniversityModel.id)).all()
+        runs = session.scalars(select(IngestRunModel).order_by(IngestRunModel.started_at.desc()).limit(3)).all()
+        program_count = session.scalar(select(func.count()).select_from(ProgramModel))
+        print(json.dumps({
+            "databaseTarget": redact_database_url(settings.database_url),
+            "universityCount": len(ids),
+            "universityIds": ids[:10],
+            "programCount": program_count,
+            "latestIngestRuns": [{
+                "universityId": run.university_id,
+                "status": run.status,
+                "sourceProfile": run.source_profile,
+                "programCount": run.program_count,
+                "projectionStatus": run.projection_status,
+            } for run in runs],
+        }))
+finally:
+    engine.dispose()
+"""
+
+
+@dataclass(frozen=True)
+class Command:
+    label: str
+    argv: tuple[str, ...]
+    cwd: Path
+    environment: Mapping[str, str] | None = None
+
+
+def _npm() -> str:
+    return "npm.cmd" if os.name == "nt" else "npm"
+
+
+def resolve_target(target: str, arguments: Sequence[str] = ()) -> tuple[Command, ...]:
+    npm = _npm()
+    python = sys.executable
+    targets: dict[str, tuple[Command, ...]] = {
+        "max": (Command("MAX verification", (npm, "run", "verify"), MAX_ROOT),),
+        "andromeda": (
+            Command("Andromeda full local gate", (python, "scripts/andromeda.py", "full"), ANDROMEDA_ROOT),
+        ),
+        "contracts": (
+            Command("OpenAPI snapshot and generated web client drift", (python, "scripts/andromeda.py", "openapi"), ANDROMEDA_ROOT),
+            Command("Official DATA-API validation", (python, "scripts/andromeda.py", "data-api"), ANDROMEDA_ROOT),
+            Command("Generated MAX client drift", (npm, "run", "check:andromeda-client-drift"), MAX_ROOT),
+            Command("MAX to Andromeda architecture boundary", (npm, "run", "check:architecture"), MAX_ROOT),
+        ),
+        "full": (
+            Command("MAX full verification", (npm, "run", "verify"), MAX_ROOT),
+            Command("Andromeda full local gate", (python, "scripts/andromeda.py", "full"), ANDROMEDA_ROOT),
+            Command("OpenAPI, DATA-API and MAX contract checks", (python, "scripts/monorepo.py", "contracts"), ROOT),
+            Command("Root Compose validation", ("docker", "compose", "config", "--quiet"), ROOT),
+        ),
+    }
+    if target not in targets:
+        raise ValueError(f"Unknown monorepo target: {target}")
+    if arguments:
+        raise ValueError(f"Target {target} does not accept additional arguments")
+    return targets[target]
+
+
+def resolve_stack_action(
+    action: str,
+    *,
+    fixtures: bool = False,
+    max_profile: bool = False,
+    volumes: bool = False,
+) -> Command:
+    argv: list[str] = ["docker", "compose"]
+    if max_profile:
+        argv.extend(("--profile", "max"))
+    if action == "up":
+        if not fixtures:
+            raise ValueError("stack up requires explicit --fixtures; this stack always seeds local development data")
+        argv.extend(("up", "--build", "--detach", "--wait"))
+        label = "Fixture-backed Andromeda/MAX stack"
+    elif action == "down":
+        argv.append("down")
+        if volumes:
+            argv.append("--volumes")
+        label = "Stop Andromeda/MAX stack"
+    elif action == "status":
+        argv.extend(("ps", "--all"))
+        label = "Andromeda/MAX stack status"
+    else:
+        raise ValueError("stack action must be up, down, or status")
+    return Command(label, tuple(argv), ROOT)
+
+
+def run_commands(
+    commands: Sequence[Command],
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+) -> int:
+    for command in commands:
+        print(f"[monorepo] {command.label} (cwd={command.cwd})")
+        result = runner(
+            list(command.argv),
+            cwd=command.cwd,
+            check=False,
+            env=_command_environment(command.environment),
+        )
+        if result.returncode != 0:
+            return int(result.returncode or 1)
+    return 0
+
+
+def _command_environment(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    return {**os.environ, **(overrides or {})}
+
+
+def _free_local_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+def _wait_for_http(
+    url: str,
+    process: subprocess.Popen[bytes],
+    *,
+    timeout: float = 180.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+    last_error = "no response"
+    while time.monotonic() < deadline:
+        return_code = process.poll()
+        if return_code is not None:
+            raise RuntimeError(f"Andromeda fixture demo exited before readiness with code {return_code}")
+        try:
+            with urlopen(url, timeout=5.0) as response:
+                if response.status == 200:
+                    return
+                last_error = f"HTTP {response.status}"
+        except (OSError, TimeoutError, URLError) as exc:
+            last_error = str(exc)
+        time.sleep(0.25)
+    raise TimeoutError(f"Timed out waiting for Andromeda frontend at {url}: {last_error}")
+
+
+def _stop_fixture_demo(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        process.send_signal(signal.SIGINT)
+    try:
+        process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=10)
+
+
+def _run_andromeda_browser_suite(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+    popen_factory: Callable[..., subprocess.Popen[bytes]] | None = None,
+    readiness_waiter: Callable[..., None] | None = None,
+) -> int:
+    """Run Andromeda Playwright against the existing isolated fixture demo."""
+    popen = popen_factory or subprocess.Popen
+    wait_for_http = readiness_waiter or _wait_for_http
+    api_port = _free_local_port()
+    frontend_port = _free_local_port()
+    while frontend_port == api_port:
+        frontend_port = _free_local_port()
+
+    with (
+        tempfile.TemporaryDirectory(prefix="andromeda-monorepo-e2e-") as temp_dir,
+        tempfile.TemporaryDirectory(prefix=".next-smoke-", dir=ANDROMEDA_ROOT / "frontend-next") as next_dist_dir,
+    ):
+        database = Path(temp_dir) / "fixture.db"
+        frontend_root = ANDROMEDA_ROOT / "frontend-next"
+        tsconfig_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                prefix="tsconfig-smoke-",
+                suffix=".json",
+                dir=frontend_root,
+                delete=False,
+            ) as tsconfig_file:
+                tsconfig_path = Path(tsconfig_file.name)
+            shutil.copyfile(frontend_root / "tsconfig.json", tsconfig_path)
+
+            frontend_url = f"http://127.0.0.1:{frontend_port}"
+            environment = {
+                **os.environ,
+                "ANDROMEDA_NEXT_DEV_DIST_DIR": Path(next_dist_dir).name,
+                "ANDROMEDA_NEXT_DEV_TSCONFIG_PATH": tsconfig_path.name,
+                "PLAYWRIGHT_BASE_URL": frontend_url,
+            }
+            demo_command = [
+                "uv",
+                "run",
+                "--project",
+                "backend",
+                "--locked",
+                "--extra",
+                "dev",
+                "--extra",
+                "browser",
+                "python",
+                "backend/scripts/run_andromeda_demo.py",
+                "--mode",
+                "fixture",
+                "--database-url",
+                f"sqlite:///{database.as_posix()}",
+                "--api-port",
+                str(api_port),
+                "--frontend-port",
+                str(frontend_port),
+                "--log-level",
+                "INFO",
+            ]
+            process_options: dict[str, object] = {"cwd": ANDROMEDA_ROOT, "env": environment}
+            if os.name == "nt":
+                process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            else:
+                process_options["start_new_session"] = True
+
+            print(f"[monorepo] Start isolated Andromeda fixture demo for Playwright (cwd={ANDROMEDA_ROOT})")
+            demo_process = popen(demo_command, **process_options)
+            status = 0
+            try:
+                wait_for_http(frontend_url, demo_process)
+                command = Command(
+                    "Andromeda browser suite",
+                    (sys.executable, "scripts/andromeda.py", "playwright"),
+                    ANDROMEDA_ROOT,
+                    {"PLAYWRIGHT_BASE_URL": frontend_url},
+                )
+                print(f"[monorepo] {command.label} (cwd={command.cwd})")
+                result = runner(
+                    list(command.argv),
+                    cwd=command.cwd,
+                    check=False,
+                    env=_command_environment(command.environment),
+                )
+                status = int(result.returncode or 0)
+            except (OSError, RuntimeError, TimeoutError) as exc:
+                print(f"[monorepo] Andromeda fixture demo failed before browser tests: {exc}")
+                status = 1
+            finally:
+                _stop_fixture_demo(demo_process)
+            return status
+        finally:
+            if tsconfig_path is not None:
+                tsconfig_path.unlink(missing_ok=True)
+
+
+def run_e2e(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+) -> int:
+    """Run real MAX-to-Andromeda HTTP scenarios against an isolated fixture stack."""
+    api_port = _free_local_port()
+    redis_port = _free_local_port()
+    while redis_port == api_port:
+        redis_port = _free_local_port()
+    project = f"andromeda-max-e2e-{os.getpid()}"
+    environment = {
+        "ANDROMEDA_HOST_PORT": str(api_port),
+        "MAX_TEST_REDIS_PORT": str(redis_port),
+        "MAX_E2E_ANDROMEDA_URL": f"http://127.0.0.1:{api_port}",
+        "MAX_TEST_REDIS_URL": f"redis://127.0.0.1:{redis_port}/1",
+    }
+    compose = ("docker", "compose", "--project-name", project)
+    commands = (
+        Command(
+            "Start isolated PostgreSQL/Redis and fixture-backed Andromeda API",
+            (*compose, "up", "--build", "--detach", "--wait", "andromeda", "redis"),
+            ROOT,
+            environment,
+        ),
+        Command("Run MAX Redis and real assistant HTTP integration scenarios", (_npm(), "run", "test:integration"), MAX_ROOT, environment),
+        Command(
+            "Andromeda production-like fixture smoke",
+            (sys.executable, "scripts/andromeda.py", "production-smoke"),
+            ANDROMEDA_ROOT,
+        ),
+    )
+    status = 0
+    try:
+        for command in commands:
+            print(f"[monorepo] {command.label} (cwd={command.cwd})")
+            result = runner(
+                list(command.argv),
+                cwd=command.cwd,
+                check=False,
+                env=_command_environment(command.environment),
+            )
+            if result.returncode != 0:
+                status = int(result.returncode or 1)
+                if command.label == "Run MAX Redis and real assistant HTTP integration scenarios":
+                    print("[monorepo] API-container catalog state for failed MAX HTTP integration")
+                    runner(
+                        [*compose, "exec", "-T", "andromeda", "python", "-c", _FIXTURE_CATALOG_DIAGNOSTIC],
+                        cwd=ROOT,
+                        check=False,
+                        env=_command_environment(environment),
+                    )
+                break
+        if status == 0:
+            status = _run_andromeda_browser_suite(runner=runner)
+        if status == 0:
+            command = Command("MAX browser suite", (_npm(), "run", "test:browser"), MAX_ROOT)
+            print(f"[monorepo] {command.label} (cwd={command.cwd})")
+            result = runner(
+                list(command.argv),
+                cwd=command.cwd,
+                check=False,
+                env=_command_environment(command.environment),
+            )
+            if result.returncode != 0:
+                status = int(result.returncode or 1)
+    finally:
+        cleanup = Command(
+            "Remove only the isolated E2E Compose project and its temporary volumes",
+            (*compose, "down", "--volumes", "--remove-orphans"),
+            ROOT,
+            environment,
+        )
+        print(f"[monorepo] {cleanup.label}")
+        result = runner(
+            list(cleanup.argv),
+            cwd=cleanup.cwd,
+            check=False,
+            env=_command_environment(cleanup.environment),
+        )
+        if status == 0 and result.returncode != 0:
+            status = int(result.returncode or 1)
+    return status
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run MAX/Andromeda monorepo checks or local stack")
+    subparsers = parser.add_subparsers(dest="target", required=True)
+    for target, help_text in (
+        ("max", "MAX unit, integration, browser and package checks"),
+        ("andromeda", "Andromeda full deterministic local gate"),
+        ("contracts", "Canonical OpenAPI, DATA-API and generated MAX client drift"),
+        ("full", "All deterministic MAX and Andromeda checks plus Compose validation"),
+        ("e2e", "Fixture-backed API and browser smoke checks"),
+    ):
+        subparsers.add_parser(target, help=help_text)
+    stack = subparsers.add_parser("stack", help="Manage the local fixture-backed stack")
+    stack_actions = stack.add_subparsers(dest="stack_action", required=True)
+    stack_up = stack_actions.add_parser("up", help="Build/start local Postgres, Redis and fixture-backed Andromeda")
+    stack_up.add_argument("--fixtures", action="store_true", required=True, help="Confirm that local fixture data may be seeded")
+    stack_up.add_argument("--max", dest="max_profile", action="store_true", help="Also start MAX Bot and Mini App; requires MAX_BOT_TOKEN")
+    stack_down = stack_actions.add_parser("down", help="Stop services while preserving named data volumes")
+    stack_down.add_argument("--max", dest="max_profile", action="store_true", help="Include the optional MAX profile")
+    stack_down.add_argument("--volumes", action="store_true", help="Delete local Postgres/Redis data volumes")
+    stack_status = stack_actions.add_parser("status", help="Show local Compose service status")
+    stack_status.add_argument("--max", dest="max_profile", action="store_true", help="Include the optional MAX profile")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        if args.target == "stack":
+            command = resolve_stack_action(
+                args.stack_action,
+                fixtures=bool(getattr(args, "fixtures", False)),
+                max_profile=bool(getattr(args, "max_profile", False)),
+                volumes=bool(getattr(args, "volumes", False)),
+            )
+            commands = (command,)
+        elif args.target == "e2e":
+            return run_e2e()
+        else:
+            commands = resolve_target(args.target)
+    except ValueError as error:
+        parser.error(str(error))
+    return run_commands(commands)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

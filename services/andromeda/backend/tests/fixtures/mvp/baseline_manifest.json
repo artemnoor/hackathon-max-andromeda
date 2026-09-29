@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "fixtureRoots": {
+    "bmstu": "backend/tests/fixtures/tracer/raw",
+    "hse": "backend/tests/fixtures/hse/raw"
+  },
+  "migrationHead": "0016_ingestion_source_health",
+  "universities": {
+    "bmstu": {
+      "programIds": [
+        "program:bmstu:09.03.01-02",
+        "program:bmstu:09.03.01-12"
+      ],
+      "counts": {
+        "curricula": 2,
+        "curriculumItems": 212,
+        "disciplines": 101,
+        "admissions": 2,
+        "events": 5,
+        "campusPoints": 5,
+        "sourceGaps": 0
+      },
+      "snapshots": [
+        {"sourceKind": "bmstu_common", "statusCode": 200, "sha256": "27c7a2142d586ce462b3753c6a5e5061f667f3ef7ac6a2f3ae32b642cb6261ff"},
+        {"sourceKind": "bmstu_major_catalog", "statusCode": 200, "sha256": "5d8460c5662b476f7c2d2611426134169f4926febfbf2a755fd3f6e97e889fd3"},
+        {"sourceKind": "bmstu_major_catalog", "statusCode": 200, "sha256": "121c58c40e9e371b20454700618eefc24fad9c96d7d81ec3413b5289d56964db"},
+        {"sourceKind": "bmstu_major_detail", "statusCode": 200, "sha256": "7145f212707d923433cced08977bea99eacc8604865ab1bb4877405c3d429eaf"},
+        {"sourceKind": "bmstu_curriculum_document", "statusCode": 200, "sha256": "6ff702f01fae34893897dc047249131cf62c760de1d3181707dc970faaae9fa0"},
+        {"sourceKind": "bmstu_curriculum_document", "statusCode": 200, "sha256": "0358f9b5fb94304c3ed012f9285ec5bf7587dd272c499cd733f5ecad4dbc0047"},
+        {"sourceKind": "bmstu_events", "statusCode": 200, "sha256": "cf85fb598aecf1009db7000b98a36c7610cd62a1a500496199ac3a8f9e932b96"},
+        {"sourceKind": "bmstu_campus_points", "statusCode": 200, "sha256": "0ec7c6f2fcd6b2798f5c007118acfac6540e07c20ebe2b92f44bc1c54fad72b6"}
+      ]
+    },
+    "hse": {
+      "programIds": [
+        "program:hse:01.03.02-445",
+        "program:hse:01.03.02-195"
+      ],
+      "counts": {
+        "curricula": 2,
+        "curriculumItems": 48,
+        "disciplines": 37,
+        "admissions": 2,
+        "events": 0,
+        "campusPoints": 0,
+        "sourceGaps": 4
+      },
+      "snapshots": [
+        {"sourceKind": "hse_common", "statusCode": 404, "sha256": "31ebdd0966ef6d4323ae785332c25c89bd6b1fac335ec7fd47714657567f249e"},
+        {"sourceKind": "hse_program_catalog", "statusCode": 200, "sha256": "d49708bd7e4b2fb8980b24d3ef3d6448dad63abe008171dc0800146b1db4a5f5"},
+        {"sourceKind": "hse_program_detail", "statusCode": 200, "sha256": "0642a37fd5e005424686494b8992e367026b7fa25d26335771e3290e3695e70d"},
+        {"sourceKind": "hse_program_detail", "statusCode": 200, "sha256": "03d2bab31c3aa7d372b926bf7dd7ee0518b658067ebdc57794910798a4761545"},
+        {"sourceKind": "hse_curriculum_index", "statusCode": 200, "sha256": "c363c774cee57d334a25f49c007143bb196b52bf61469cdc140886be47aa9775"},
+        {"sourceKind": "hse_curriculum_index", "statusCode": 200, "sha256": "9047fce35d996d1aab6e3e305242fe5092c4d606a21975eb96b7ad03bb0843ec"},
+        {"sourceKind": "hse_curriculum_document", "statusCode": 200, "sha256": "c2c653ddb0082e585da3cfd1b6fd601f08b1f264e4aa0c14ddfeb2bb7066c5ea"},
+        {"sourceKind": "hse_curriculum_document", "statusCode": 200, "sha256": "ade4321b817747604cb9da9a97bb06a98d5c79b008fd0a66d25010553529c36c"},
+        {"sourceKind": "hse_admission_rules", "statusCode": 200, "sha256": "ce81e52945ba9b64e3275dca20eaa98d1ba673477e4908ccc3a9d171410ec278"},
+        {"sourceKind": "hse_admission_places", "statusCode": 200, "sha256": "c8388b347697310b350fed4ab5b31ec12ab6f3cf8435fec903cbee4bb0eaa9de"},
+        {"sourceKind": "hse_tuition", "statusCode": 200, "sha256": "71c94df8bf82cc9c9414faa70f43f0126de66ac1d8de35f86a3107c008a9c0ef"},
+        {"sourceKind": "hse_passing_scores", "statusCode": 200, "sha256": "15626b4c372973f825a24b9e72c2c5ba22659641caf89803e6ccc49fc53dddf3"}
+      ]
+    }
+  }
+}

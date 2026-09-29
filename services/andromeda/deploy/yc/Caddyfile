@@ -1,0 +1,13 @@
+{$ANDROMEDA_DOMAIN} {
+  handle /api/v1/* {
+    reverse_proxy backend:8020
+  }
+
+  handle_path /api/* {
+    reverse_proxy backend:8020
+  }
+
+  handle {
+    reverse_proxy frontend:3000
+  }
+}

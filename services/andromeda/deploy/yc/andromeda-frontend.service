@@ -1,0 +1,21 @@
+[Unit]
+Description=Andromeda Next.js frontend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/andromeda/release/frontend-runtime/.next/standalone
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3000
+ExecStart=/usr/bin/node /opt/andromeda/release/frontend-runtime/.next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+User=andromeda
+Group=andromeda
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
