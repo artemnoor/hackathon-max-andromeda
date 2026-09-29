@@ -158,4 +158,3 @@ def test_postgresql_supports_the_campus_data_contract() -> None:
     assert detail.json()["programs"]
     assert events.status_code == 200
     assert events.json()["items"]
-
