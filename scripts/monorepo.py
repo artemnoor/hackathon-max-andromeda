@@ -16,6 +16,24 @@ MAX_ROOT = ROOT / "apps" / "max"
 ANDROMEDA_ROOT = ROOT / "services" / "andromeda"
 ANDROMEDA_BACKEND = ANDROMEDA_ROOT / "backend"
 
+_FIXTURE_CATALOG_DIAGNOSTIC = """
+import json
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from andromeda.infrastructure.config import Settings, redact_database_url
+from andromeda.infrastructure.database import create_engine_for_url
+from andromeda.infrastructure.database.models import UniversityModel
+
+settings = Settings.from_environment()
+engine = create_engine_for_url(settings.database_url)
+try:
+    with Session(engine) as session:
+        ids = session.scalars(select(UniversityModel.id).order_by(UniversityModel.id)).all()
+        print(json.dumps({"databaseTarget": redact_database_url(settings.database_url), "universityCount": len(ids), "universityIds": ids[:10]}))
+finally:
+    engine.dispose()
+"""
+
 
 @dataclass(frozen=True)
 class Command:
@@ -163,9 +181,9 @@ def run_e2e(
             if result.returncode != 0:
                 status = int(result.returncode or 1)
                 if command.label == "Run MAX Redis and real assistant HTTP integration scenarios":
-                    print("[monorepo] Fixture seed output for failed MAX HTTP integration")
+                    print("[monorepo] API-container catalog state for failed MAX HTTP integration")
                     runner(
-                        [*compose, "logs", "--no-color", "--no-log-prefix", "--tail=60", "andromeda-seed"],
+                        [*compose, "exec", "-T", "andromeda", "python", "-c", _FIXTURE_CATALOG_DIAGNOSTIC],
                         cwd=ROOT,
                         check=False,
                         env=_command_environment(environment),
