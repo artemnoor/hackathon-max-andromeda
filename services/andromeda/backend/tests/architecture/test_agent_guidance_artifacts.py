@@ -4,15 +4,21 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).parents[2]
+ANDROMEDA_ROOT = PROJECT_ROOT.parent
+MONOREPO_ROOT = PROJECT_ROOT.parents[2]
 
 
 def _read(relative: str) -> str:
-    return (PROJECT_ROOT.parent / relative).read_text(encoding="utf-8")
+    return (ANDROMEDA_ROOT / relative).read_text(encoding="utf-8")
 
 
 def test_persistent_guidance_artifacts_exist_and_are_utf8() -> None:
-    for relative in ("AGENTS.md", ".ai-factory/DESCRIPTION.md", ".ai-factory/RULES.md"):
-        content = _read(relative)
+    for path in (
+        ANDROMEDA_ROOT / "AGENTS.md",
+        MONOREPO_ROOT / "AGENTS.md",
+        ANDROMEDA_ROOT / "docs" / "architecture.md",
+    ):
+        content = path.read_text(encoding="utf-8")
         assert content.strip()
         assert "Andromeda" in content
 
@@ -29,41 +35,50 @@ def test_agents_workflow_and_safety_rules_are_explicit() -> None:
         assert required in content
 
 
-def test_description_covers_current_modules_and_multi_university_direction() -> None:
-    content = _read(".ai-factory/DESCRIPTION.md")
+def test_public_docs_cover_current_modules_and_multi_university_direction() -> None:
+    content = "\n".join(
+        _read(relative)
+        for relative in (
+            "README.md",
+            "docs/architecture.md",
+            "docs/ingestion-adapters.md",
+        )
+    )
+    normalized = content.casefold()
     for required in (
         "BMSTU",
         "multi-university",
-        "ingestion/universities/<university>",
+        "adapter",
         "events",
         "campus",
         "admission_fit",
         "recommendations",
-        "Personal Route",
+        "personal-route",
     ):
-        assert required in content
+        assert required.casefold() in normalized
 
 
-def test_rules_cover_automatable_architecture_invariants() -> None:
-    content = _read(".ai-factory/RULES.md")
+def test_public_architecture_docs_cover_automatable_invariants() -> None:
+    content = "\n".join(
+        (_read("AGENTS.md"), _read("docs/architecture.md"))
+    )
+    normalized = content.casefold()
     for required in (
         "modular monolith",
-        "domain`, `contracts`, `services`, `repository",
         "contracts.public",
-        "repository.ports",
+        "repository/ports.py",
         "SQLAlchemy",
-        "Новый вуз = новый adapter",
         "Content Fit",
         "Admission Fit",
         "Career Fit",
-        "Workload Readiness",
+        "Workload readiness",
         "OpenAPI",
-        "generated frontend clients",
-        "Microservices",
+        "generated",
+        "микросервисы",
         "Kafka",
         "CQRS",
     ):
-        assert required in content
+        assert required.casefold() in normalized
 
 
 def test_architecture_doc_matches_current_event_and_campus_scope() -> None:

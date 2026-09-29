@@ -69,7 +69,7 @@ class JevAlignSession:
         if config.batch_size < 1 or config.concurrency < 1:
             raise ValueError("jev-align batch size and concurrency must be positive")
 
-        from jev_align.models import (  # type: ignore[import-untyped]
+        from jev_align.models import (  # type: ignore  # optional external package is not typed
             BackendConfig,
             CandidateHistory,
             MultilabelCriteria,
@@ -77,8 +77,12 @@ class JevAlignSession:
             RunState,
             Story,
         )
-        from jev_align.persistence import RunStore  # type: ignore[import-untyped]
-        from jev_align.session import ClimbSession  # type: ignore[import-untyped]
+        from jev_align.persistence import (  # type: ignore  # optional external package is not typed
+            RunStore,
+        )
+        from jev_align.session import (  # type: ignore  # optional external package is not typed
+            ClimbSession,
+        )
 
         run_directory = config.run_directory.expanduser().resolve()
         if run_directory.exists():
@@ -200,7 +204,9 @@ def create_typesafe_backend(*, model: str, concurrency: int) -> Any:
     """Construct the real jev-align TypeSafe backend through its public API."""
 
     from jev_align.models import BackendConfig
-    from jev_align.runtime import create_backend  # type: ignore[import-untyped]
+    from jev_align.runtime import (  # type: ignore  # optional external package is not typed
+        create_backend,
+    )
 
     return create_backend(BackendConfig(provider="typesafe", model=model), concurrency=concurrency)
 

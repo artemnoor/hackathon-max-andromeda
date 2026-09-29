@@ -32,8 +32,12 @@ python scripts/monorepo.py e2e
 
 Copy the root `.env.example` to `.env` for local Compose overrides. Start the fixture-backed PostgreSQL, Redis and Andromeda API with `python scripts/monorepo.py stack up --fixtures`. Add `--max` after setting `MAX_BOT_TOKEN` to start the real MAX Bot and Mini App profile. `python scripts/monorepo.py stack down` preserves database/cache volumes; pass `--volumes` only when you explicitly want to erase this local state. `full` validates Compose without starting services or requiring provider credentials.
 
+`python scripts/monorepo.py e2e` creates a disposable, uniquely named Compose project with fixture-seeded PostgreSQL, Redis and Andromeda, runs the MAX-to-Public-API HTTP/session integration suite plus the Andromeda and MAX browser checks, then removes only that E2E project's containers and temporary volumes. Docker Engine must be running. The six assistant scenarios use deterministic fixtures and do not call Jev, DeepSeek, MAX or university sites.
+
 Use fixture-backed data for deterministic local checks. Live university sources and paid AI providers are optional and are not substitutes for the deterministic test suite. Never commit `.env` files, tokens, cookies, MAX update payloads or applicant profiles.
 
 ## API contracts and licenses
 
 The canonical Public API v1 contract is [`services/andromeda/openapi.json`](services/andromeda/openapi.json). MAX DTOs are generated from that file; update the backend export, generated client and drift evidence together. Internal `/ops` and review APIs are not MAX contracts. The MAX and Andromeda source trees retain their respective license notices in their package roots.
+
+See [`docs/architecture.md`](docs/architecture.md) for module and transport ownership and [`docs/development.md`](docs/development.md) for environment setup, fixture E2E, contract generation and verification commands.

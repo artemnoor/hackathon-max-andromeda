@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_ROOT = ROOT / "apps" / "max"
@@ -21,6 +22,7 @@ class Command:
     label: str
     argv: tuple[str, ...]
     cwd: Path
+    environment: Mapping[str, str] | None = None
 
 
 def _npm() -> str:
@@ -46,11 +48,6 @@ def resolve_target(target: str, arguments: Sequence[str] = ()) -> tuple[Command,
             Command("Andromeda full local gate", (python, "scripts/andromeda.py", "full"), ANDROMEDA_ROOT),
             Command("OpenAPI, DATA-API and MAX contract checks", (python, "scripts/monorepo.py", "contracts"), ROOT),
             Command("Root Compose validation", ("docker", "compose", "config", "--quiet"), ROOT),
-        ),
-        "e2e": (
-            Command("Andromeda production-like fixture smoke", (python, "scripts/andromeda.py", "production-smoke"), ANDROMEDA_ROOT),
-            Command("Andromeda browser suite", (python, "scripts/andromeda.py", "playwright"), ANDROMEDA_ROOT),
-            Command("MAX browser suite", (npm, "run", "test:browser"), MAX_ROOT),
         ),
     }
     if target not in targets:
@@ -95,10 +92,94 @@ def run_commands(
 ) -> int:
     for command in commands:
         print(f"[monorepo] {command.label} (cwd={command.cwd})")
-        result = runner(list(command.argv), cwd=command.cwd, check=False)
+        result = runner(
+            list(command.argv),
+            cwd=command.cwd,
+            check=False,
+            env=_command_environment(command.environment),
+        )
         if result.returncode != 0:
             return int(result.returncode or 1)
     return 0
+
+
+def _command_environment(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    return {**os.environ, **(overrides or {})}
+
+
+def _free_local_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+def run_e2e(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+) -> int:
+    """Run real MAX-to-Andromeda HTTP scenarios against an isolated fixture stack."""
+    api_port = _free_local_port()
+    redis_port = _free_local_port()
+    while redis_port == api_port:
+        redis_port = _free_local_port()
+    project = f"andromeda-max-e2e-{os.getpid()}"
+    environment = {
+        "ANDROMEDA_HOST_PORT": str(api_port),
+        "MAX_TEST_REDIS_PORT": str(redis_port),
+        "MAX_E2E_ANDROMEDA_URL": f"http://127.0.0.1:{api_port}",
+        "MAX_TEST_REDIS_URL": f"redis://127.0.0.1:{redis_port}/1",
+    }
+    compose = ("docker", "compose", "--project-name", project)
+    commands = (
+        Command(
+            "Start isolated PostgreSQL/Redis and fixture-backed Andromeda API",
+            (*compose, "up", "--build", "--detach", "--wait", "andromeda"),
+            ROOT,
+            environment,
+        ),
+        Command("Run MAX Redis and real assistant HTTP integration scenarios", (_npm(), "run", "test:integration"), MAX_ROOT, environment),
+        Command(
+            "Andromeda production-like fixture smoke",
+            (sys.executable, "scripts/andromeda.py", "production-smoke"),
+            ANDROMEDA_ROOT,
+        ),
+        Command(
+            "Andromeda browser suite",
+            (sys.executable, "scripts/andromeda.py", "playwright"),
+            ANDROMEDA_ROOT,
+        ),
+        Command("MAX browser suite", (_npm(), "run", "test:browser"), MAX_ROOT),
+    )
+    status = 0
+    try:
+        for command in commands:
+            print(f"[monorepo] {command.label} (cwd={command.cwd})")
+            result = runner(
+                list(command.argv),
+                cwd=command.cwd,
+                check=False,
+                env=_command_environment(command.environment),
+            )
+            if result.returncode != 0:
+                status = int(result.returncode or 1)
+                break
+    finally:
+        cleanup = Command(
+            "Remove only the isolated E2E Compose project and its temporary volumes",
+            (*compose, "down", "--volumes", "--remove-orphans"),
+            ROOT,
+            environment,
+        )
+        print(f"[monorepo] {cleanup.label}")
+        result = runner(
+            list(cleanup.argv),
+            cwd=cleanup.cwd,
+            check=False,
+            env=_command_environment(cleanup.environment),
+        )
+        if status == 0 and result.returncode != 0:
+            status = int(result.returncode or 1)
+    return status
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -137,6 +218,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 volumes=bool(getattr(args, "volumes", False)),
             )
             commands = (command,)
+        elif args.target == "e2e":
+            return run_e2e()
         else:
             commands = resolve_target(args.target)
     except ValueError as error:

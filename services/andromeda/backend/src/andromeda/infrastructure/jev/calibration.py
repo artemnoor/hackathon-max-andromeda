@@ -51,7 +51,9 @@ class CascadeCalibrationAdapter:
             required_definition_ids=required_definition_ids,
         )
         try:
-            from jevcal.runtime import Cascade  # type: ignore[import-untyped]
+            from jevcal.runtime import (  # type: ignore  # optional external package is not typed
+                Cascade,
+            )
         except ImportError as exc:  # pragma: no cover - optional dependency guard
             raise CalibrationArtifactError("jevcal optional dependency is not installed") from exc
         self._cascade_type = Cascade

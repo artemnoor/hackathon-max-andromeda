@@ -56,6 +56,25 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         self.assertIn("--profile", command.argv)
         self.assertIn("max", command.argv)
 
+    def test_e2e_uses_a_unique_fixture_stack_and_always_cleans_it_up(self) -> None:
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def runner(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[object]:
+            calls.append((argv, kwargs))
+            result = subprocess.CompletedProcess(argv, 7 if len(calls) == 2 else 0)
+            return result
+
+        self.assertEqual(monorepo.run_e2e(runner=runner), 7)
+        self.assertEqual(len(calls), 3)
+        up, integration, cleanup = calls
+        self.assertIn("--project-name", up[0])
+        self.assertIn("--wait", up[0])
+        self.assertEqual(up[1]["cwd"], monorepo.ROOT)
+        self.assertIn("test:integration", integration[0])
+        self.assertIn("MAX_E2E_ANDROMEDA_URL", integration[1]["env"])
+        self.assertIn("--volumes", cleanup[0])
+        self.assertIn("andromeda-max-e2e-", cleanup[0][3])
+
 
 if __name__ == "__main__":
     unittest.main()
