@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
+import signal
 import socket
 import subprocess
 import sys
+import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
+from urllib.error import URLError
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_ROOT = ROOT / "apps" / "max"
@@ -145,6 +151,145 @@ def _free_local_port() -> int:
         return int(listener.getsockname()[1])
 
 
+def _wait_for_http(
+    url: str,
+    process: subprocess.Popen[bytes],
+    *,
+    timeout: float = 180.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+    last_error = "no response"
+    while time.monotonic() < deadline:
+        return_code = process.poll()
+        if return_code is not None:
+            raise RuntimeError(f"Andromeda fixture demo exited before readiness with code {return_code}")
+        try:
+            with urlopen(url, timeout=5.0) as response:
+                if response.status == 200:
+                    return
+                last_error = f"HTTP {response.status}"
+        except (OSError, TimeoutError, URLError) as exc:
+            last_error = str(exc)
+        time.sleep(0.25)
+    raise TimeoutError(f"Timed out waiting for Andromeda frontend at {url}: {last_error}")
+
+
+def _stop_fixture_demo(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        process.send_signal(signal.SIGINT)
+    try:
+        process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=10)
+
+
+def _run_andromeda_browser_suite(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+    popen_factory: Callable[..., subprocess.Popen[bytes]] | None = None,
+    readiness_waiter: Callable[..., None] | None = None,
+) -> int:
+    """Run Andromeda Playwright against the existing isolated fixture demo."""
+    popen = popen_factory or subprocess.Popen
+    wait_for_http = readiness_waiter or _wait_for_http
+    api_port = _free_local_port()
+    frontend_port = _free_local_port()
+    while frontend_port == api_port:
+        frontend_port = _free_local_port()
+
+    with (
+        tempfile.TemporaryDirectory(prefix="andromeda-monorepo-e2e-") as temp_dir,
+        tempfile.TemporaryDirectory(prefix=".next-smoke-", dir=ANDROMEDA_ROOT / "frontend-next") as next_dist_dir,
+    ):
+        database = Path(temp_dir) / "fixture.db"
+        frontend_root = ANDROMEDA_ROOT / "frontend-next"
+        tsconfig_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                prefix="tsconfig-smoke-",
+                suffix=".json",
+                dir=frontend_root,
+                delete=False,
+            ) as tsconfig_file:
+                tsconfig_path = Path(tsconfig_file.name)
+            shutil.copyfile(frontend_root / "tsconfig.json", tsconfig_path)
+
+            frontend_url = f"http://127.0.0.1:{frontend_port}"
+            environment = {
+                **os.environ,
+                "ANDROMEDA_NEXT_DEV_DIST_DIR": Path(next_dist_dir).name,
+                "ANDROMEDA_NEXT_DEV_TSCONFIG_PATH": tsconfig_path.name,
+                "PLAYWRIGHT_BASE_URL": frontend_url,
+            }
+            demo_command = [
+                "uv",
+                "run",
+                "--project",
+                "backend",
+                "--locked",
+                "--extra",
+                "dev",
+                "--extra",
+                "browser",
+                "python",
+                "backend/scripts/run_andromeda_demo.py",
+                "--mode",
+                "fixture",
+                "--database-url",
+                f"sqlite:///{database.as_posix()}",
+                "--api-port",
+                str(api_port),
+                "--frontend-port",
+                str(frontend_port),
+                "--log-level",
+                "INFO",
+            ]
+            process_options: dict[str, object] = {"cwd": ANDROMEDA_ROOT, "env": environment}
+            if os.name == "nt":
+                process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            else:
+                process_options["start_new_session"] = True
+
+            print(f"[monorepo] Start isolated Andromeda fixture demo for Playwright (cwd={ANDROMEDA_ROOT})")
+            demo_process = popen(demo_command, **process_options)
+            status = 0
+            try:
+                wait_for_http(frontend_url, demo_process)
+                command = Command(
+                    "Andromeda browser suite",
+                    (sys.executable, "scripts/andromeda.py", "playwright"),
+                    ANDROMEDA_ROOT,
+                    {"PLAYWRIGHT_BASE_URL": frontend_url},
+                )
+                print(f"[monorepo] {command.label} (cwd={command.cwd})")
+                result = runner(
+                    list(command.argv),
+                    cwd=command.cwd,
+                    check=False,
+                    env=_command_environment(command.environment),
+                )
+                status = int(result.returncode or 0)
+            except (OSError, RuntimeError, TimeoutError) as exc:
+                print(f"[monorepo] Andromeda fixture demo failed before browser tests: {exc}")
+                status = 1
+            finally:
+                _stop_fixture_demo(demo_process)
+            return status
+        finally:
+            if tsconfig_path is not None:
+                tsconfig_path.unlink(missing_ok=True)
+
+
 def run_e2e(
     *,
     runner: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
@@ -175,12 +320,6 @@ def run_e2e(
             (sys.executable, "scripts/andromeda.py", "production-smoke"),
             ANDROMEDA_ROOT,
         ),
-        Command(
-            "Andromeda browser suite",
-            (sys.executable, "scripts/andromeda.py", "playwright"),
-            ANDROMEDA_ROOT,
-        ),
-        Command("MAX browser suite", (_npm(), "run", "test:browser"), MAX_ROOT),
     )
     status = 0
     try:
@@ -203,6 +342,19 @@ def run_e2e(
                         env=_command_environment(environment),
                     )
                 break
+        if status == 0:
+            status = _run_andromeda_browser_suite(runner=runner)
+        if status == 0:
+            command = Command("MAX browser suite", (_npm(), "run", "test:browser"), MAX_ROOT)
+            print(f"[monorepo] {command.label} (cwd={command.cwd})")
+            result = runner(
+                list(command.argv),
+                cwd=command.cwd,
+                check=False,
+                env=_command_environment(command.environment),
+            )
+            if result.returncode != 0:
+                status = int(result.returncode or 1)
     finally:
         cleanup = Command(
             "Remove only the isolated E2E Compose project and its temporary volumes",
@@ -269,3 +421,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

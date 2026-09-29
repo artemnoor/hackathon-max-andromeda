@@ -5,6 +5,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "monorepo.py"
@@ -56,6 +57,79 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         self.assertIn("--profile", command.argv)
         self.assertIn("max", command.argv)
 
+    def test_andromeda_browser_suite_starts_and_stops_an_isolated_fixture_demo(self) -> None:
+        class FakeProcess:
+            pid = 123
+
+            def __init__(self) -> None:
+                self.returncode: int | None = None
+                self.signals: list[object] = []
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def send_signal(self, received_signal: object) -> None:
+                self.signals.append(received_signal)
+
+            def wait(self, timeout: float | None = None) -> int:
+                self.returncode = 0
+                return 0
+
+            def kill(self) -> None:
+                self.returncode = -9
+
+        process = FakeProcess()
+        process_calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def popen_factory(argv: list[str], **kwargs: object) -> FakeProcess:
+            process_calls.append((argv, kwargs))
+            return process
+
+        runner = Mock(return_value=subprocess.CompletedProcess([], 0))
+        readiness_waiter = Mock()
+
+        with patch.object(monorepo.subprocess, "run") as taskkill:
+            status = monorepo._run_andromeda_browser_suite(
+                runner=runner,
+                popen_factory=popen_factory,
+                readiness_waiter=readiness_waiter,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(len(process_calls), 1)
+        demo_argv, options = process_calls[0]
+        self.assertIn("backend/scripts/run_andromeda_demo.py", demo_argv)
+        self.assertIn("--database-url", demo_argv)
+        self.assertIn("sqlite:///", demo_argv[demo_argv.index("--database-url") + 1])
+        self.assertEqual(options["cwd"], monorepo.ANDROMEDA_ROOT)
+        environment = options["env"]
+        self.assertIn("ANDROMEDA_NEXT_DEV_DIST_DIR", environment)
+        self.assertIn("ANDROMEDA_NEXT_DEV_TSCONFIG_PATH", environment)
+        self.assertEqual(readiness_waiter.call_count, 1)
+        self.assertIn("playwright", runner.call_args.args[0])
+        self.assertIn("PLAYWRIGHT_BASE_URL", runner.call_args.kwargs["env"])
+        if sys.platform != "win32":
+            self.assertEqual(process.signals, [monorepo.signal.SIGINT])
+        else:
+            taskkill.assert_called_once()
+
+    def test_e2e_runs_both_browser_suites_after_http_and_smoke_checks(self) -> None:
+        calls: list[list[str]] = []
+
+        def runner(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[object]:
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, 0)
+
+        with patch.object(monorepo, "_run_andromeda_browser_suite", return_value=0) as browser_suite:
+            self.assertEqual(monorepo.run_e2e(runner=runner), 0)
+
+        browser_suite.assert_called_once()
+        self.assertEqual(len(calls), 5)
+        self.assertIn("test:integration", calls[1])
+        self.assertIn("production-smoke", calls[2])
+        self.assertIn("test:browser", calls[3])
+        self.assertIn("down", calls[4])
+
     def test_e2e_uses_a_unique_fixture_stack_and_always_cleans_it_up(self) -> None:
         calls: list[tuple[list[str], dict[str, object]]] = []
 
@@ -83,3 +157,4 @@ class MonorepoOrchestrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
