@@ -18,18 +18,32 @@ ANDROMEDA_BACKEND = ANDROMEDA_ROOT / "backend"
 
 _FIXTURE_CATALOG_DIAGNOSTIC = """
 import json
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
-from andromeda.infrastructure.database.models import UniversityModel
+from andromeda.infrastructure.database.models import IngestRunModel, ProgramModel, UniversityModel
 
 settings = Settings.from_environment()
 engine = create_engine_for_url(settings.database_url)
 try:
     with Session(engine) as session:
         ids = session.scalars(select(UniversityModel.id).order_by(UniversityModel.id)).all()
-        print(json.dumps({"databaseTarget": redact_database_url(settings.database_url), "universityCount": len(ids), "universityIds": ids[:10]}))
+        runs = session.scalars(select(IngestRunModel).order_by(IngestRunModel.started_at.desc()).limit(3)).all()
+        program_count = session.scalar(select(func.count()).select_from(ProgramModel))
+        print(json.dumps({
+            "databaseTarget": redact_database_url(settings.database_url),
+            "universityCount": len(ids),
+            "universityIds": ids[:10],
+            "programCount": program_count,
+            "latestIngestRuns": [{
+                "universityId": run.university_id,
+                "status": run.status,
+                "sourceProfile": run.source_profile,
+                "programCount": run.program_count,
+                "projectionStatus": run.projection_status,
+            } for run in runs],
+        }))
 finally:
     engine.dispose()
 """

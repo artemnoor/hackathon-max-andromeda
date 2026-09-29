@@ -76,7 +76,7 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         self.assertIn("MAX_E2E_ANDROMEDA_URL", integration[1]["env"])
         self.assertIn("exec", catalog_diagnostic[0])
         self.assertIn("andromeda", catalog_diagnostic[0])
-        self.assertIn("UniversityModel", catalog_diagnostic[0][-1])
+        self.assertIn("IngestRunModel", catalog_diagnostic[0][-1])
         self.assertIn("--volumes", cleanup[0])
         self.assertIn("andromeda-max-e2e-", cleanup[0][3])
 
