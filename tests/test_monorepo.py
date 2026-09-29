@@ -65,8 +65,8 @@ class MonorepoOrchestrationTests(unittest.TestCase):
             return result
 
         self.assertEqual(monorepo.run_e2e(runner=runner), 7)
-        self.assertEqual(len(calls), 3)
-        up, integration, cleanup = calls
+        self.assertEqual(len(calls), 4)
+        up, integration, seed_logs, cleanup = calls
         self.assertIn("--project-name", up[0])
         self.assertIn("--wait", up[0])
         self.assertIn("andromeda", up[0])
@@ -74,6 +74,8 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         self.assertEqual(up[1]["cwd"], monorepo.ROOT)
         self.assertIn("test:integration", integration[0])
         self.assertIn("MAX_E2E_ANDROMEDA_URL", integration[1]["env"])
+        self.assertIn("logs", seed_logs[0])
+        self.assertIn("andromeda-seed", seed_logs[0])
         self.assertIn("--volumes", cleanup[0])
         self.assertIn("andromeda-max-e2e-", cleanup[0][3])
 

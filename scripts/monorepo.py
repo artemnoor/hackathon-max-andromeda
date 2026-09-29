@@ -162,6 +162,14 @@ def run_e2e(
             )
             if result.returncode != 0:
                 status = int(result.returncode or 1)
+                if command.label == "Run MAX Redis and real assistant HTTP integration scenarios":
+                    print("[monorepo] Fixture seed output for failed MAX HTTP integration")
+                    runner(
+                        [*compose, "logs", "--no-color", "--no-log-prefix", "--tail=60", "andromeda-seed"],
+                        cwd=ROOT,
+                        check=False,
+                        env=_command_environment(environment),
+                    )
                 break
     finally:
         cleanup = Command(
