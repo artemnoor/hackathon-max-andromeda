@@ -69,6 +69,8 @@ class MonorepoOrchestrationTests(unittest.TestCase):
         up, integration, cleanup = calls
         self.assertIn("--project-name", up[0])
         self.assertIn("--wait", up[0])
+        self.assertIn("andromeda", up[0])
+        self.assertIn("redis", up[0])
         self.assertEqual(up[1]["cwd"], monorepo.ROOT)
         self.assertIn("test:integration", integration[0])
         self.assertIn("MAX_E2E_ANDROMEDA_URL", integration[1]["env"])

@@ -133,7 +133,7 @@ def run_e2e(
     commands = (
         Command(
             "Start isolated PostgreSQL/Redis and fixture-backed Andromeda API",
-            (*compose, "up", "--build", "--detach", "--wait", "andromeda"),
+            (*compose, "up", "--build", "--detach", "--wait", "andromeda", "redis"),
             ROOT,
             environment,
         ),
