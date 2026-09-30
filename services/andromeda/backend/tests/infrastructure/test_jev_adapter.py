@@ -317,8 +317,10 @@ def test_jev_clarification_action_uses_deterministic_question_text() -> None:
     assert result.source is DecisionModelSource.JEV
     assert result.model_version == "jev-1.13.0"
     assert result.decision.action is DecisionAction.ASK_CLARIFICATION
-    assert result.decision.question == "Какие у вас баллы по предметам ЕГЭ?"
-    assert result.decision.options
+    assert result.decision.question == (
+        "Какие баллы ЕГЭ у вас есть? Укажите предмет и результат каждого экзамена."
+    )
+    assert result.decision.options == ()
 
 
 def test_jev_impossible_action_falls_back_to_deterministic_policy() -> None:

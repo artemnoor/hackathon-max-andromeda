@@ -1,0 +1,163 @@
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #202a2e;
+  --muted: #68767a;
+  --line: #dce3e5;
+  --paper: #ffffff;
+  --cream: #f4f7f7;
+  --surface: #ffffff;
+  --surface-raised: #f6f8f8;
+  --surface-soft: #eaf0f2;
+  --surface-inverse: #1d282c;
+  --blue: #4e8299;
+  --blue-dark: #355f73;
+  --blue-soft: #e8f1f4;
+  --green: #36784e;
+  --green-soft: #eaf4ed;
+  --amber: #80621d;
+  --amber-soft: #f7f1df;
+  --red: #a34552;
+  --red-soft: #f8e9eb;
+  --violet: #704f89;
+  --violet-soft: #f1ebf6;
+  --surface-tint-blue: #eaf3f6;
+  --surface-tint-blue-hover: #dfedf1;
+  --tint-blue-border: #c4dbe2;
+  --surface-tint-green: #edf5ef;
+  --surface-tint-green-hover: #e1efe5;
+  --tint-green-border: #c9dfcf;
+  --surface-tint-amber: #f8f3e5;
+  --surface-tint-amber-hover: #f0e7cc;
+  --tint-amber-border: #e5d7ad;
+  --surface-tint-violet: #f2edf7;
+  --surface-tint-violet-hover: #e9e0f1;
+  --tint-violet-border: #d8cbe4;
+  --shadow: 0 14px 42px rgba(30, 45, 50, .12);
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  min-height: 100%;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+html[data-theme="light"] .topbar {
+  background: #f4f7f7;
+  color: var(--ink);
+}
+
+html[data-theme="light"] .theme-toggle .theme-icon-sun { display: none; }
+html[data-theme="light"] .theme-toggle .theme-icon-moon { display: block; }
+.theme-toggle .theme-icon-sun { display: block; }
+.theme-toggle .theme-icon-moon { display: none; }
+.theme-toggle svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+html[data-theme="light"] .home-hero {
+  background: radial-gradient(ellipse at 50% 42%, #e8eff1 0%, #f0f4f5 48%, #f4f7f7 100%);
+}
+
+html[data-theme="light"] .hero-cap { stroke: #516a75; }
+html[data-theme="light"] .hero-description { color: #526166; }
+
+html[data-theme="light"] .home-hero-cta:hover {
+  border-color: rgba(32, 42, 46, .3);
+  background: rgba(255, 255, 255, .6);
+  color: var(--ink);
+}
+
+html[data-theme="light"] .home-orbit,
+html[data-theme="light"] .home-orbit-right::before,
+html[data-theme="light"] .home-orbit-right::after,
+html[data-theme="light"] .home-orbit-right span,
+html[data-theme="light"] .home-orbit-right span::after {
+  border-color: rgba(48, 70, 79, .13);
+}
+
+html[data-theme="light"] .news-card {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-theme="light"] .news-date { color: #68767a; }
+
+html[data-theme="light"] .news-progress { background: rgba(32, 42, 46, .15); }
+html[data-theme="light"] .news-progress-bar { background: var(--violet); }
+
+html[data-theme="light"] .step { background: #e1e7e8; }
+html[data-theme="light"] .stat { border-color: var(--line); }
+
+html[data-theme="light"] .next-step {
+  border-color: var(--tint-violet-border);
+  background: linear-gradient(145deg, var(--surface-tint-violet), var(--surface) 78%);
+}
+
+html[data-theme="light"] .next-step .next-icon {
+  border-color: var(--tint-violet-border);
+  background: var(--surface-tint-violet-hover);
+  color: var(--violet);
+}
+
+html[data-theme="light"] .profile-hero {
+  border-color: #d8e1e3;
+  background: radial-gradient(ellipse at 88% 15%, #eaf0f2 0, #f1f5f6 46%, #f8fafa 100%);
+  color: var(--ink);
+}
+
+html[data-theme="light"] .profile-info-card { border-color: #d0dce0; }
+
+html[data-theme="light"] .profile-hero-mark {
+  border-color: rgba(48, 70, 79, .16);
+  background: rgba(255, 255, 255, .48);
+}
+
+html[data-theme="light"] .add-ege-subject {
+  border-color: #bdcbd0;
+  background: var(--surface-raised);
+  color: var(--blue-dark);
+}
+
+html[data-theme="light"] .subject-option:hover:not(:disabled) {
+  border-color: #a8bdc5;
+  background: #eef3f4;
+  color: var(--ink);
+}
+
+html[data-theme="light"] .active-profile-summary {
+  background: linear-gradient(135deg, #f2f5f6, #ffffff);
+}
+
+html[data-theme="light"] .profile-avatar {
+  border-color: #d3e0e4;
+}
+
+html[data-theme="light"] .exam-profile-card.active {
+  border-color: #9ab0ba;
+  background: #edf3f5;
+  box-shadow: inset 2px 0 var(--blue-dark);
+}
+
+html[data-theme="light"] .exam-profile-card:hover { border-color: #adbec4; }
+html[data-theme="light"] .rule small { color: var(--muted); }
+
+html[data-theme="light"] .filter,
+html[data-theme="light"] .search,
+html[data-theme="light"] .field input,
+html[data-theme="light"] .field select,
+html[data-theme="light"] .move-select,
+html[data-theme="light"] .plan-toggle button,
+html[data-theme="light"] .semester-switch button,
+html[data-theme="light"] .answer,
+html[data-theme="light"] .points,
+html[data-theme="light"] .ege-extra-field input,
+html[data-theme="light"] .ege-search-wrap input,
+html[data-theme="light"] .profile-create-fields input {
+  color-scheme: light;
+}
+
+html[data-theme="light"] .exam-profile-card:hover { color: var(--ink); }
+
+html[data-theme="light"] .bucket {
+  border-color: var(--line);
+  background: #f6f8f8;
+}

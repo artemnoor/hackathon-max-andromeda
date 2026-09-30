@@ -10,11 +10,14 @@ from andromeda.modules.conversation.contracts.public import (
     ConversationSlot,
     FactOrigin,
     NextAction,
+    ParsedQuery,
     PolicyQueryFocus,
     QuerySession,
 )
+from andromeda.modules.conversation.contracts.public import ProgramDiscoveryContext
 from andromeda.modules.conversation.domain.session import merge_parsed_query
 from andromeda.modules.conversation.services.rule_parser import RuleBasedQueryParser
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 from andromeda.modules.entity_resolution.contracts.public import ResolutionEntityType
 from andromeda.modules.proftest.contracts.public import ProfileScope
 
@@ -50,14 +53,16 @@ def test_parser_and_session_fill_admission_slots_in_two_turns() -> None:
     completed = merge_parsed_query(
         session, second, updated_at=NOW + timedelta(seconds=2)
     )
-    assert completed.missing_slots == (ConversationSlot.UNIVERSITY_SCOPE,)
-    assert completed.next_action is NextAction.ASK_FOR_UNIVERSITY_SCOPE
+    assert completed.missing_slots == (ConversationSlot.FUNDING,)
+    assert completed.next_action is NextAction.ASK_FOR_FUNDING
+    assert completed.admission_university_scope is AdmissionUniversityScope.ANY_UNIVERSITY
+    assert completed.inferred_parameters["admission_university_scope"].origin is FactOrigin.POLICY_DEFAULT
     assert completed.known_slots["total_score"] == Decimal(270)
     assert (
         completed.confirmed_parameters["total_score"].origin is FactOrigin.EXPLICIT_USER
     )
     assert completed.frame.intent is ConversationIntent.ADMISSION_SEARCH
-    assert completed.frame.missing_fields == (ConversationSlot.UNIVERSITY_SCOPE,)
+    assert completed.frame.missing_fields == (ConversationSlot.FUNDING,)
 
 
 def test_parser_supports_metric_comparison_and_canonical_entity_slots() -> None:
@@ -76,6 +81,12 @@ def test_parser_supports_metric_comparison_and_canonical_entity_slots() -> None:
     )
     assert session.entities[ResolutionEntityType.PROGRAM] == parsed.program_queries
     assert session.next_action is NextAction.EXECUTE_QUERY
+
+
+def test_program_name_business_informatics_is_not_misread_as_business_metric() -> None:
+    parsed = RuleBasedQueryParser().parse("Сравни бизнес-информатику и программную инженерию")
+
+    assert parsed.metric_codes == ()
 
 
 def test_repeating_same_follow_up_is_idempotent_and_unknown_text_is_safe() -> None:
@@ -149,7 +160,7 @@ def test_explicit_any_university_scope_completes_admission_clarification() -> No
 
     assert completed.next_action is NextAction.ASK_FOR_FUNDING
     assert completed.missing_slots == (ConversationSlot.FUNDING,)
-    assert completed.parser_version == "conversation-parser.v4"
+    assert completed.parser_version == "conversation-parser.v6"
     assert (
         completed.admission_university_scope is AdmissionUniversityScope.ANY_UNIVERSITY
     )
@@ -190,6 +201,58 @@ def test_parser_recognizes_funding_and_admission_preferences() -> None:
     assert paid.funding_type is FundingType.PAID
     assert paid.study_form is StudyForm.FULL_TIME
     assert paid.admission_year == 2027
+
+
+def test_program_listing_with_a_content_filter_is_discovery_not_analytics() -> None:
+    parsed = RuleBasedQueryParser().parse(
+        "Хотя нет, лучше сначала покажи программы по разработке"
+    )
+
+    assert parsed.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert parsed.preferred_areas == (DisciplineAreaCode.COMPUTER_SCIENCE_DATA,)
+
+
+def test_returning_to_an_explicit_interest_restores_discovery_intent() -> None:
+    parsed = RuleBasedQueryParser().parse("Теперь всё-таки вернёмся к ИИ")
+
+    assert parsed.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert parsed.preferred_areas == (DisciplineAreaCode.COMPUTER_SCIENCE_DATA,)
+
+
+def test_misspelled_program_request_still_uses_explicit_machine_learning_interest() -> None:
+    parsed = RuleBasedQueryParser().parse(
+        "прогрмы связанные с машинным обучением"
+    )
+
+    assert parsed.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert parsed.preferred_areas == (DisciplineAreaCode.COMPUTER_SCIENCE_DATA,)
+
+
+def test_loose_data_science_interest_is_understood_as_discovery() -> None:
+    parsed = RuleBasedQueryParser().parse("Что-то около data science")
+
+    assert parsed.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert parsed.preferred_areas == (DisciplineAreaCode.COMPUTER_SCIENCE_DATA,)
+
+
+def test_catalog_university_mentions_include_common_full_names_and_acronyms() -> None:
+    parser = RuleBasedQueryParser()
+
+    hse = parser.parse("Что есть по ИИ в Высшей школе экономики?")
+    mipt = parser.parse("Подбери программу по ИИ в МФТИ")
+
+    assert hse.university_queries == ("высшая школа экономики",)
+    assert mipt.university_queries == ("мфти",)
+
+
+def test_comparative_language_maps_development_and_analytics_to_metrics() -> None:
+    parsed = RuleBasedQueryParser().parse(
+        "Какая из них больше про разработку, а какая про аналитику?"
+    )
+
+    assert parsed.metric_codes == ("programming_share", "analytics_share")
+    assert parsed.intent is ConversationIntent.ANALYTICS_QUERY
+    assert parsed.preferred_areas == ()
 
 
 def test_policy_query_parses_rule_year_without_treating_it_as_applicant_year() -> None:
@@ -305,3 +368,103 @@ def test_query_compiler_keeps_policy_context_typed_for_orchestration() -> None:
 
     assert compiled.next_action is NextAction.EXECUTE_QUERY
     assert compiled.policy_query_context == session.policy_query_context
+
+
+def test_program_discovery_extracts_user_preferences_without_an_ai_provider() -> None:
+    parser = RuleBasedQueryParser()
+    first = parser.parse("хочу поступать куда-нибудь в IT, не понимаю куда")
+    assert first.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert tuple(area.value for area in first.preferred_areas) == ("computer_science_data",)
+    assert first.avoided_areas == ()
+
+    session = merge_parsed_query(
+        _session(), first, updated_at=NOW + timedelta(seconds=1)
+    )
+    assert session.missing_slots == ()
+    assert session.program_discovery_context is not None
+    assert session.program_discovery_context.preferred_areas == first.preferred_areas
+
+    follow_up = parser.parse("нравится ИИ, но не хочу много математики")
+    assert follow_up.intent is ConversationIntent.PROGRAM_DISCOVERY
+    assert tuple(area.value for area in follow_up.preferred_areas) == ("computer_science_data",)
+    assert tuple(area.value for area in follow_up.avoided_areas) == ("mathematics_statistics",)
+    refined = merge_parsed_query(
+        session, follow_up, updated_at=NOW + timedelta(seconds=2)
+    )
+    assert refined.program_discovery_context is not None
+    assert set(refined.program_discovery_context.preferred_areas) == {
+        *first.preferred_areas,
+    }
+    assert refined.program_discovery_context.avoided_areas == follow_up.avoided_areas
+
+
+def test_generic_what_if_is_not_misclassified_as_an_education_policy_query() -> None:
+    parser = RuleBasedQueryParser()
+    generic = parser.parse("А если 285?")
+    assert generic.policy_query_context is None
+    assert generic.intent is ConversationIntent.UNKNOWN
+
+    policy = parser.parse("А если четвертый ЕГЭ всё-таки введут с 2028 года?")
+    assert policy.policy_query_context is not None
+    assert policy.policy_query_context.focus.value == "what_if"
+
+
+def test_changed_total_score_requires_subject_update_and_merges_partial_scores() -> None:
+    parser = RuleBasedQueryParser()
+    complete = merge_parsed_query(
+        _session(),
+        parser.parse(
+            "Куда поступить с 270: русский 90, математика 90, информатика 90, "
+            "любые вузы, бюджет"
+        ),
+        updated_at=NOW + timedelta(seconds=1),
+    )
+    assert complete.next_action is NextAction.EXECUTE_QUERY
+
+    total_update = ParsedQuery(
+        intent=ConversationIntent.ADMISSION_SEARCH, total_score=Decimal(285)
+    )
+    pending = merge_parsed_query(
+        complete, total_update, updated_at=NOW + timedelta(seconds=2)
+    )
+    assert pending.next_action is NextAction.ASK_FOR_EXAMS
+    assert pending.known_slots["exam_scores_update_pending"] is True
+
+    subject_update = merge_parsed_query(
+        pending,
+        parser.parse("информатика 95"),
+        updated_at=NOW + timedelta(seconds=3),
+    )
+    scores = {score.subject: score.score for score in subject_update.known_slots["exam_scores"]}
+    assert scores == {
+        "русский язык": Decimal(90),
+        "математика": Decimal(90),
+        "информатика": Decimal(95),
+    }
+    assert "exam_scores_update_pending" not in subject_update.known_slots
+    assert subject_update.next_action is NextAction.EXECUTE_QUERY
+
+
+def test_explicit_comparison_metric_replacement_drops_summary_defaults() -> None:
+    existing = _session().model_copy(
+        update={
+            "intent": ConversationIntent.COMPARE_PROGRAMS,
+            "metrics": (
+                "programming_share",
+                "ai_share",
+                "math_share",
+                "physics_share",
+            ),
+        }
+    )
+    updated = merge_parsed_query(
+        existing,
+        ParsedQuery(
+            intent=ConversationIntent.COMPARE_PROGRAMS,
+            metric_codes=("programming_share", "math_share"),
+            replace_metrics=True,
+        ),
+        updated_at=NOW + timedelta(seconds=1),
+    )
+
+    assert updated.metrics == ("programming_share", "math_share")

@@ -215,6 +215,10 @@ def test_resolvers_support_aliases_context_and_explicit_ambiguity() -> None:
     assert university.status is ResolutionStatus.RESOLVED
     assert university.selected_id == "university:bmstu"
 
+    inflected_university = UniversityResolverService(catalog).resolve("Бауманке")
+    assert inflected_university.status is ResolutionStatus.RESOLVED
+    assert inflected_university.selected_id == "university:bmstu"
+
     ambiguous = DirectionResolverService(catalog).resolve("09.03.03")
     assert ambiguous.status is ResolutionStatus.AMBIGUOUS
     scoped = DirectionResolverService(catalog).resolve(

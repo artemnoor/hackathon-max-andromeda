@@ -127,6 +127,56 @@ class KnowledgeResponseRenderer:
             mode = ResponseMode.UNVERIFIED_FALLBACK
         return KnowledgeResponseRenderResult(text=text, response_mode=mode)
 
+    def naturalize_text(
+        self,
+        text: str,
+        *,
+        rate_limit_key: str,
+    ) -> KnowledgeResponseRenderResult:
+        """Naturalize one ordinary response caption without exposing its data payload."""
+        if (
+            self._naturalizer is None
+            or not rate_limit_key
+            or not text.strip()
+            or len(text) > 4_000
+        ):
+            return KnowledgeResponseRenderResult(text=text)
+
+        section_id = "section:" + hashlib.sha256(
+            f"ordinary-response:{text}".encode("utf-8")
+        ).hexdigest()
+        section = PresentationSectionRef(
+            section_id=section_id,
+            kind=PresentationSectionKind.FACTS,
+        )
+        own_reference = section_reference_id(section_id)
+        request = ResponseNaturalizationRequest(
+            sections=(
+                ResponseNaturalizationSection(
+                    section=section,
+                    text=text,
+                    allowed_reference_ids=(own_reference,),
+                ),
+            ),
+            required_section_order=(section_id,),
+        )
+        try:
+            result = self._naturalizer.naturalize(
+                request, rate_limit_key=rate_limit_key
+            )
+            naturalized = _validated_naturalization(result, request)
+            if naturalized is not None:
+                return KnowledgeResponseRenderResult(
+                    text=naturalized,
+                    response_mode=ResponseMode.SOURCE_BACKED_VERBALIZATION,
+                )
+        except Exception as error:  # noqa: BLE001 - optional port must fail closed
+            logger.warning(
+                "assistant_response_naturalizer_fallback error_type=%s",
+                type(error).__name__,
+            )
+        return KnowledgeResponseRenderResult(text=text)
+
 
 def _render_blocks(
     response: KnowledgeResponseSection,

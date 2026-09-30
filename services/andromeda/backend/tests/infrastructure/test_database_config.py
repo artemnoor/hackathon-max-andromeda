@@ -50,6 +50,34 @@ def test_presentation_model_is_disabled_and_optional_by_default(
     assert "polza_api_key" not in repr(settings)
 
 
+def test_conversation_ai_timeout_is_separate_and_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.delenv("CONVERSATION_AI_TIMEOUT_SECONDS", raising=False)
+
+    assert Settings.from_environment().conversation_ai_timeout_seconds == 15.0
+
+    monkeypatch.setenv("CONVERSATION_AI_TIMEOUT_SECONDS", "22")
+    assert Settings.from_environment().conversation_ai_timeout_seconds == 22.0
+
+
+def test_conversation_ai_rate_limit_is_separate_and_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.delenv("CONVERSATION_AI_RATE_LIMIT_MAX", raising=False)
+
+    assert Settings.from_environment().conversation_ai_rate_limit_max == 12
+
+    monkeypatch.setenv("CONVERSATION_AI_RATE_LIMIT_MAX", "18")
+    assert Settings.from_environment().conversation_ai_rate_limit_max == 18
+
+    monkeypatch.setenv("CONVERSATION_AI_RATE_LIMIT_MAX", "31")
+    with pytest.raises(ValueError, match="CONVERSATION_AI_RATE_LIMIT_MAX"):
+        Settings.from_environment()
+
+
 def test_presentation_model_can_be_enabled_without_a_key_and_remains_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

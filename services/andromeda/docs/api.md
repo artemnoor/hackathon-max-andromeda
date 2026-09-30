@@ -6,6 +6,8 @@ FastAPI-приложение `andromeda.api.main` обслуживает оди�
 
 `frontend-next/openapi.json` — generated full-app snapshot, нужный существующей Web админке и её внутренним типам. Это не альтернативная спецификация Public API. Из Public API генерируются `frontend-next/src/lib/public-api.generated.ts` и узкий `public-api-client.ts`; внутренний Web adapter отдельно использует `generated.ts`.
 
+Публичная спецификация Public API v1 опубликована по адресу [`https://max.code-slicer.ru/openapi.json`](https://max.code-slicer.ru/openapi.json). TLS ingress раздаёт canonical `openapi.json` напрямую (Caddy для Compose deployment и Nginx на текущей VM); FastAPI runtime `/openapi.json` и `/docs` остаются внутренними, поскольку описывают также operator/admin operations.
+
 ## Public API v1
 
 MAX Bot, MAX Mini App, Web и другие transport-клиенты обращаются только к `/api/v1`. Они не вызывают `/ops/*`, `/university-admin/*` или knowledge-review API. Версионированные операции — aliases существующих endpoint handlers: backend, application services, repository и domain logic остаются общими.
@@ -54,7 +56,7 @@ python scripts/andromeda.py openapi
 
 ### DATA-API validation
 
-[`DATA-API.yaml`](../DATA-API.yaml) points to the canonical public `openapi.json`. Its base URL is a reserved `.example` placeholder until an organizer-accessible HTTPS deployment URL is configured; validator PASS checks schema, deterministic check definitions and OpenAPI operation mapping, not live endpoint availability. Run the pinned official validator with:
+[`DATA-API.yaml`](../DATA-API.yaml) targets `https://max.code-slicer.ru`; the public OpenAPI v1 document is served at `https://max.code-slicer.ru/openapi.json`. The pinned validator checks the local contract and operation mapping, while the deployment monitor probes liveness, catalog data and the published document once per minute. Run the validator with:
 
 ```powershell
 python scripts/andromeda.py data-api

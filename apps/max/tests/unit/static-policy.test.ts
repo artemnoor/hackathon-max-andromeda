@@ -9,5 +9,6 @@ test('Mini App CSP permits only the official MAX bridge and required MAX frame p
   assert.match(policy, /script-src 'self' https:\/\/st\.max\.ru/u);
   assert.match(policy, /frame-ancestors https:\/\/max\.ru https:\/\/web\.max\.ru/u);
   assert.match(policy, /connect-src 'self'/u);
-  assert.doesNotMatch(policy, /unsafe-inline|unsafe-eval|\*/u);
+  assert.match(policy, /style-src-attr 'unsafe-inline'/u);
+  assert.doesNotMatch(policy, /script-src[^;]*unsafe-inline|unsafe-eval|\*/u);
 });

@@ -1,0 +1,49 @@
+#page-proftest {
+  --feature-line: rgba(207, 212, 211, .28);
+}
+
+#page-proftest .test-layout { max-width: 930px; margin: 0 auto; }
+#page-proftest .page-title { margin-bottom: 20px; }
+#page-proftest .page-title h1 { max-width: 900px; font-size: clamp(42px, 6vw, 72px); line-height: .98; letter-spacing: -.065em; }
+#page-proftest .page-title p { max-width: 54ch; font-size: 14px; line-height: 1.7; }
+#page-proftest .eyebrow { color: #a2aaa8; }
+#page-proftest .test-progress { position: relative; height: 2px; margin: 24px 0 0; border-radius: 0; background: rgba(207,212,211,.16); }
+#page-proftest .test-progress::before { position: absolute; bottom: 8px; left: 0; color: #8e9693; content: "ПРОФТЕСТ  /  5 ВОПРОСОВ"; font-size: 9px; letter-spacing: .1em; }
+#page-proftest .test-progress i { border-radius: 0; background: #71957e; transition: width .35s ease; }
+#page-proftest .question-card,
+#page-proftest #test-content > .panel { margin-top: 22px; padding: clamp(22px, 5vw, 44px) 0; border: 0; border-top: 1px solid var(--feature-line); border-radius: 0; background: transparent; box-shadow: none; text-align: left; }
+#page-proftest .question-card .eyebrow { color: #68c7a2; }
+#page-proftest .question-card h2 { max-width: 740px; margin: 14px 0 30px; color: #edf0ef; font-size: clamp(27px, 4vw, 45px); line-height: 1.12; letter-spacing: -.045em; }
+#page-proftest .answers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+#page-proftest .answer { position: relative; display: flex; min-height: 76px; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border: 1px solid var(--feature-line); border-radius: 3px; background: transparent; color: #d5dbd8; font-size: 13px; font-weight: 500; line-height: 1.45; transition: border-color .18s ease, background .18s ease, color .18s ease; }
+#page-proftest .answer::after { flex: 0 0 auto; color: #818986; content: "↗"; font-size: 15px; transition: color .18s ease, transform .18s ease; }
+#page-proftest .answer:hover { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.04); color: #f5f7f6; }
+#page-proftest .answer:hover::after { color: #8ad5b7; transform: translate(2px,-2px); }
+#page-proftest #test-content > .panel .result-interests { gap: 0; margin: 10px 0 25px; }
+#page-proftest .interest-line { grid-template-columns: minmax(105px, .35fr) minmax(0, 1fr) 64px; gap: 15px; min-height: 53px; border-bottom: 1px solid rgba(207,212,211,.17); color: #d8dedb; font-size: 12px; }
+#page-proftest .interest-line .bar { height: 3px; border-radius: 0; background: #282f2c; }
+#page-proftest .interest-line .bar i { border-radius: 0; background: var(--blue); }
+#page-proftest .interest-line > span { color: #9da5a2; font-size: 10px; text-align: right; }
+#page-proftest #test-content > .panel > h3 { margin: 0 0 6px; font-size: 21px; letter-spacing: -.035em; }
+#page-proftest #test-content > .panel > p { margin-bottom: 20px; color: #929a97; }
+#page-proftest .card-actions { flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+#page-proftest .card-actions .btn { flex: 0 1 auto; min-height: 42px; padding: 10px 14px; border: 1px solid var(--feature-line); border-radius: 3px; background: transparent; color: #e8ecea; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; box-shadow: none; }
+#page-proftest .card-actions .btn:hover { border-color: rgba(255,255,255,.65); background: rgba(255,255,255,.05); }
+
+@media (max-width: 650px) {
+  #page-proftest .page-title { margin: 0 0 18px; }
+  #page-proftest .page-title h1 { font-size: clamp(40px, 11vw, 56px); }
+  #page-proftest .page-title p { font-size: 13px; }
+  #page-proftest .question-card,
+  #page-proftest #test-content > .panel { padding: 24px 0; }
+  #page-proftest .question-card h2 { margin-bottom: 22px; font-size: clamp(25px, 8vw, 34px); }
+  #page-proftest .answers { grid-template-columns: 1fr; gap: 7px; }
+  #page-proftest .answer { min-height: 62px; padding: 13px 14px; }
+  #page-proftest .interest-line { grid-template-columns: minmax(88px, .4fr) minmax(0, 1fr) 54px; gap: 9px; font-size: 11px; }
+  #page-proftest .card-actions .btn { flex: 1 1 100%; }
+}
+#page-proftest .interest-directions { margin-top: 22px; padding-top: 15px; border-top: 1px solid var(--line); }
+#page-proftest .interest-directions h3 { margin: 0 0 10px; font-size: 17px; }
+#page-proftest .interest-direction { display: grid; gap: 5px; padding: 10px 0; border-top: 1px solid var(--line); }
+#page-proftest .interest-direction b { font-size: 12px; }
+#page-proftest .interest-direction span { color: var(--muted); font-size: 11px; line-height: 1.5; }

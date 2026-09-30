@@ -26,13 +26,19 @@ class ProftestCatalogService:
         self._builder = builder or FingerprintBuilder()
         self._projection_reader = projection_reader
 
-    def list_fingerprints(self) -> tuple[ProgramFingerprint, ...]:
-        if self._projection_reader is not None:
+    def list_fingerprints(
+        self, *, require_curriculum_evidence: bool = False
+    ) -> tuple[ProgramFingerprint, ...]:
+        """Load fingerprints, rebuilding source evidence when a consumer requires it."""
+
+        if self._projection_reader is not None and not require_curriculum_evidence:
             projections = self._projection_reader.list()
             if projections:
                 logger.info("catalog_projection_loaded fingerprint_count=%d source=program_analytics", len(projections))
                 return tuple(fingerprint_from_projection(projection) for projection in projections)
             logger.info("program_projection_fallback reason=no_active_projection")
+        elif self._projection_reader is not None and require_curriculum_evidence:
+            logger.info("program_projection_bypassed reason=curriculum_evidence_required")
         if isinstance(self._reader, BulkProftestCatalogReader):
             try:
                 snapshots = self._reader.list_catalog_snapshots()

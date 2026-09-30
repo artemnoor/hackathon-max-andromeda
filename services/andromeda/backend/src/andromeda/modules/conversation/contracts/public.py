@@ -9,9 +9,11 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import Field, StringConstraints, field_validator, model_validator
 
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 from andromeda.modules.admission_benefits.contracts.policy_evaluation import (
     ApplicantAdmissionContext,
 )
+from andromeda.modules.admission_benefits.contracts.public import OlympiadResultType
 from andromeda.modules.admission_fit.contracts.public import (
     ApplicantAdmissionProfile,
     BatchAdmissionFitRequest,
@@ -38,9 +40,9 @@ from andromeda.modules.policy.contracts.public import (
 )
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.shared.contracts.base import ContractModel
-from andromeda.shared.contracts.ids import EducationYear, Semester, UniversityId
+from andromeda.shared.contracts.ids import EducationYear, ProgramId, Semester, UniversityId
 
-CONVERSATION_PARSER_VERSION = "conversation-parser.v4"
+CONVERSATION_PARSER_VERSION = "conversation-parser.v6"
 from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
 
 QuerySessionId: TypeAlias = Annotated[
@@ -53,13 +55,17 @@ class ConversationIntent(StrEnum):
     ANALYTICS_QUERY = "analytics_query"
     COMPARE_PROGRAMS = "compare_programs"
     ADMISSION_SEARCH = "admission_search"
+    PROGRAM_DISCOVERY = "program_discovery"
+    PROGRAM_DETAILS = "program_details"
+    OLYMPIAD_BENEFITS = "olympiad_benefits"
     KNOWLEDGE_POLICY_QUERY = "knowledge_policy_query"
 
 
 class AdmissionUniversityScope(StrEnum):
-    """Explicit applicant choice for searching the whole university catalog."""
+    """Explicit applicant choice for catalog-wide or named-university search."""
 
     ANY_UNIVERSITY = "any_university"
+    SELECTED_UNIVERSITIES = "selected_universities"
 
 
 class ConversationSlot(StrEnum):
@@ -71,6 +77,8 @@ class ConversationSlot(StrEnum):
     FUNDING = "funding"
     STUDY_FORM = "study_form"
     ADMISSION_YEAR = "admission_year"
+    INTERESTS = "interests"
+    OLYMPIAD = "olympiad"
 
 
 class NextAction(StrEnum):
@@ -163,6 +171,26 @@ class QueryFact(ContractModel):
     source: str = Field(default="conversation", min_length=1, max_length=64)
 
 
+class ProgramDiscoveryContext(ContractModel):
+    """User-stated preference signals and catalog candidates for follow-ups."""
+
+    preferred_areas: tuple[DisciplineAreaCode, ...] = Field(default=(), max_length=8)
+    avoided_areas: tuple[DisciplineAreaCode, ...] = Field(default=(), max_length=8)
+    candidate_program_ids: tuple[ProgramId, ...] = Field(default=(), max_length=20)
+
+    @model_validator(mode="after")
+    def validate_context(self) -> ProgramDiscoveryContext:
+        if len(self.preferred_areas) != len(set(self.preferred_areas)):
+            raise ValueError("preferred program areas must be unique")
+        if len(self.avoided_areas) != len(set(self.avoided_areas)):
+            raise ValueError("avoided program areas must be unique")
+        if set(self.preferred_areas) & set(self.avoided_areas):
+            raise ValueError("an area cannot be both preferred and avoided")
+        if len(self.candidate_program_ids) != len(set(self.candidate_program_ids)):
+            raise ValueError("discovery candidate program IDs must be unique")
+        return self
+
+
 class QueryFrame(ContractModel):
     """The current typed question, separate from explicit decision state."""
 
@@ -195,8 +223,15 @@ class ParsedQuery(ContractModel):
     """Typed partial parser output; unresolved text is intentionally retained."""
 
     intent: ConversationIntent = ConversationIntent.UNKNOWN
+    starts_new_task: bool = False
+    olympiad_query: str | None = Field(default=None, min_length=1, max_length=256)
+    olympiad_profile_query: str | None = Field(default=None, min_length=1, max_length=256)
+    olympiad_result_year: EducationYear | None = None
+    olympiad_level: int | None = Field(default=None, strict=True, ge=1, le=3)
+    olympiad_result_type: OlympiadResultType | None = None
     admission_university_scope: AdmissionUniversityScope | None = None
     metric_codes: tuple[str, ...] = Field(default=(), max_length=8)
+    replace_metrics: bool = False
     entity_queries: tuple[str, ...] = Field(default=(), max_length=20)
     university_queries: tuple[str, ...] = Field(default=(), max_length=20)
     direction_queries: tuple[str, ...] = Field(default=(), max_length=20)
@@ -205,6 +240,8 @@ class ParsedQuery(ContractModel):
         default=None, strict=True, ge=Decimal(0), le=Decimal(400)
     )
     exam_scores: tuple[ExamScore, ...] = Field(default=(), max_length=16)
+    preferred_areas: tuple[DisciplineAreaCode, ...] = Field(default=(), max_length=8)
+    avoided_areas: tuple[DisciplineAreaCode, ...] = Field(default=(), max_length=8)
     funding_type: FundingType | None = None
     study_form: StudyForm | None = None
     study_form_ambiguous: bool = False
@@ -239,6 +276,7 @@ class QuerySession(ContractModel):
         default_factory=dict, max_length=32
     )
     policy_query_context: PolicyQueryContext | None = None
+    program_discovery_context: ProgramDiscoveryContext | None = None
     applicant_admission_context: ApplicantAdmissionContext | None = None
     resolution_cache: dict[str, str] = Field(default_factory=dict, max_length=32)
     unresolved_entities: tuple[str, ...] = Field(default=(), max_length=20)
@@ -347,6 +385,7 @@ __all__ = [
     "PolicyQueryContext",
     "PolicyQueryFocus",
     "PolicyQueryYear",
+    "ProgramDiscoveryContext",
     "QueryFact",
     "QueryFrame",
     "QuerySession",

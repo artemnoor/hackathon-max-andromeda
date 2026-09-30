@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Protocol, runtime_checkable
 
 from andromeda.modules.curricula.contracts.public import Curriculum
-from andromeda.modules.disciplines.contracts.public import Discipline
+from andromeda.modules.disciplines.contracts.public import Discipline, DisciplineAreaCode
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.shared.contracts.ids import AccountId, DisciplineId, ProgramId
 
@@ -52,6 +52,17 @@ class CurrentUserProfileReader(Protocol):
     """Read the current profile without exposing its storage implementation."""
 
     def get_current(self, scope: ProfileScope) -> UserProfileSnapshot | None: ...
+
+
+class ExplicitPreferenceProfileBuilder(Protocol):
+    """Build an ephemeral Content Fit profile from explicit user preferences."""
+
+    def build_from_explicit_preferences(
+        self,
+        *,
+        preferred_areas: tuple[DisciplineAreaCode, ...],
+        avoided_areas: tuple[DisciplineAreaCode, ...],
+    ) -> UserProfile: ...
 
 
 class UserProfileRefinementWriter(Protocol):
@@ -124,6 +135,7 @@ class ProfileBindingOutcome(str, Enum):
 __all__ = [
     "BulkProftestCatalogReader",
     "CurrentUserProfileReader",
+    "ExplicitPreferenceProfileBuilder",
     "UserProfileRefinementWriter",
     "ProfileBindingOutcome",
     "ProfileBindingPort",

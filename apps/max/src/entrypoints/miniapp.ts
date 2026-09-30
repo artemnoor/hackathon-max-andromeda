@@ -10,9 +10,14 @@ const main = async (): Promise<void> => {
   const config = loadConfig();
   const logger = createLogger({ level: config.logLevel });
   const server = createMiniAppServer(
-    buildMiniAppHandler({ config, logger }),
+    buildMiniAppHandler({
+      config,
+      logger,
+      publicApiBaseUrl: config.andromedaApiBaseUrl,
+      publicApiTimeoutMs: config.andromedaApiTimeoutMs,
+    }),
     config.miniAppPort,
-    '0.0.0.0',
+    '127.0.0.1',
   );
   let stopping = false;
 

@@ -28,10 +28,16 @@ def _uv_prefix() -> list[str]:
     return [uv, "run", "--project", str(BACKEND), "--locked", "--extra", "dev"]
 
 
-def _backend_command(*arguments: str, browser: bool = False) -> list[str]:
+def _backend_command(
+    *arguments: str,
+    browser: bool = False,
+    evaluation: bool = False,
+) -> list[str]:
     command = _uv_prefix()
     if shutil.which("uv") is not None and browser:
         command.extend(("--extra", "browser"))
+    if shutil.which("uv") is not None and evaluation:
+        command.extend(("--extra", "evaluation"))
     command.extend(("python", *arguments))
     return command
 
@@ -50,8 +56,15 @@ def _require_environment(name: str, value: str | None) -> str:
     return value
 
 
-def _backend_tests(*paths: str, coverage: bool = False, browser: bool = False) -> None:
-    command = _backend_command("-m", "pytest", "-q", *paths, browser=browser)
+def _backend_tests(
+    *paths: str,
+    coverage: bool = False,
+    browser: bool = False,
+    evaluation: bool = False,
+) -> None:
+    command = _backend_command(
+        "-m", "pytest", "-q", *paths, browser=browser, evaluation=evaluation
+    )
     if coverage:
         report_dir = ROOT / "artifacts" / "coverage" / "backend"
         report_dir.mkdir(parents=True, exist_ok=True)
@@ -287,9 +300,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         _docs()
         _deployment_contract()
     elif args.target == "backend":
-        _backend_tests(browser=True)
+        _backend_tests(browser=True, evaluation=True)
     elif args.target == "backend-coverage":
-        _backend_tests(coverage=True, browser=True)
+        _backend_tests(coverage=True, browser=True, evaluation=True)
     elif args.target == "frontend":
         _frontend("test:unit")
         _frontend("lint")

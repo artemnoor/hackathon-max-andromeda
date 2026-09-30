@@ -22,7 +22,7 @@ test('test config accepts empty MAX token and defaults to official API host', ()
   assert.equal(config.maxApiBaseUrl, 'https://platform-api2.max.ru');
   assert.equal(config.andromedaApiBaseUrl, 'http://127.0.0.1:8000');
   assert.equal(config.andromedaProfileCookieName, 'andromeda_profile_session');
-  assert.equal(config.andromedaApiTimeoutMs, 5_000);
+  assert.equal(config.andromedaApiTimeoutMs, 25_000);
   assert.equal(config.andromedaProfileTtlSeconds, 2_592_000);
   assert.equal(config.andromedaQuerySessionTtlSeconds, 86_400);
   assert.equal(config.transport, 'polling');
@@ -78,6 +78,13 @@ test('production config requires webhook, TLS Redis and strong independent deep-
   assert.equal(config.redisUrl?.startsWith('rediss://'), true);
   assert.equal(config.miniAppOrigins[0], 'https://mini.example.org');
   assert.equal(config.isProduction, true);
+});
+
+test('MAX Mini App launch URL must be a configured public HTTPS origin', () => {
+  assert.equal(loadConfig(productionEnv({ MINI_APP_PUBLIC_URL: 'https://mini.example.org' })).miniAppPublicUrl, 'https://mini.example.org');
+  for (const url of ['http://mini.example.org', 'https://other.example.org', 'https://mini.example.org/path', 'https://localhost']) {
+    assert.throws(() => loadConfig(productionEnv({ MINI_APP_PUBLIC_URL: url })), ConfigError);
+  }
 });
 
 test('production refuses polling and missing transport settings', () => {

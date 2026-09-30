@@ -1,0 +1,47 @@
+#page-recommendations {
+  --feature-line: rgba(207, 212, 211, .28);
+  --feature-accent: #00a876;
+}
+
+#page-recommendations .page-title { margin-bottom: 31px; }
+#page-recommendations .page-title h1 { max-width: 850px; font-size: clamp(42px, 6vw, 72px); line-height: .98; letter-spacing: -.065em; }
+#page-recommendations .page-title p { max-width: 54ch; font-size: 14px; line-height: 1.7; }
+#page-recommendations .eyebrow { color: #a2aaa8; }
+#page-recommendations .page-title > .btn { min-height: 40px; margin-top: 24px; padding: 9px 13px; border: 1px solid var(--feature-line); border-radius: 3px; background: transparent; color: #e8ecea; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; box-shadow: none; }
+#page-recommendations .page-title > .btn:hover { border-color: rgba(255,255,255,.65); background: rgba(255,255,255,.05); }
+#page-recommendations #recommendations-list { padding: 0; border: 0; border-block: 1px solid var(--feature-line); border-radius: 0; background: transparent; box-shadow: none; counter-reset: recommendation; }
+#page-recommendations .recommendation { position: relative; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 18px; align-items: center; min-width: 0; padding: 23px 0; border-color: rgba(207,212,211,.2); counter-increment: recommendation; }
+#page-recommendations .recommendation::before { position: absolute; top: 0; left: 0; width: 0; height: 1px; background: var(--feature-accent); content: ""; transition: width .25s ease; }
+#page-recommendations .recommendation:hover::before { width: 100%; }
+#page-recommendations .rec-code { display: grid; width: 66px; height: 66px; place-items: center; border: 1px solid var(--feature-line); border-radius: 50%; background: transparent; color: #c9d0cd; font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+#page-recommendations .recommendation h3 { margin: 0 0 5px; color: #e9edeb; font-size: clamp(18px, 2.3vw, 25px); letter-spacing: -.035em; }
+#page-recommendations .uni { color: #919996; font-size: 10px; }
+#page-recommendations .why { gap: 6px; margin-top: 13px; }
+#page-recommendations .why span { padding: 5px 8px; border: 1px solid rgba(207,212,211,.2); border-radius: 3px; background: transparent; color: #a0a8a5; font-size: 9px; }
+#page-recommendations .rec-actions { gap: 7px; }
+#page-recommendations .rec-actions .btn { min-height: 36px; padding: 7px 10px; border: 1px solid var(--feature-line); border-radius: 3px; background: transparent; color: #e8ecea; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; box-shadow: none; }
+#page-recommendations .rec-actions .btn:hover { border-color: rgba(255,255,255,.65); background: rgba(255,255,255,.05); }
+#page-recommendations .rec-actions [data-save] { min-width: 37px; color: #74c9a9; font-size: 16px; }
+#page-recommendations .context-cta { margin-top: 25px; padding: 21px 0 0; border: 0; border-top: 1px solid var(--feature-line); border-radius: 0; background: transparent; color: var(--ink); }
+#page-recommendations .context-cta strong { font-size: 16px; }
+#page-recommendations .context-cta p { color: #929a97; }
+#page-recommendations .context-cta .btn { border: 1px solid var(--feature-line); border-radius: 3px; background: transparent; color: var(--ink); }
+
+@media (max-width: 760px) {
+  #page-recommendations .recommendation { grid-template-columns: 52px minmax(0,1fr); gap: 13px; }
+  #page-recommendations .rec-code { width: 50px; height: 50px; font-size: 9px; }
+  #page-recommendations .rec-actions { grid-column: 2; }
+}
+
+@media (max-width: 650px) {
+  #page-recommendations .page-title { margin-bottom: 22px; }
+  #page-recommendations .page-title h1 { font-size: clamp(40px, 11vw, 56px); }
+  #page-recommendations .page-title p { font-size: 13px; }
+  #page-recommendations .page-title > .btn { margin-top: 15px; }
+  #page-recommendations .recommendation { padding: 18px 0; }
+  #page-recommendations .recommendation h3 { font-size: 18px; }
+  #page-recommendations .why span { line-height: 1.3; }
+  #page-recommendations .context-cta { align-items: flex-start; }
+}
+#page-recommendations .rec-match { margin-top: 12px; color: #9ca6a2; font-size: 10px; line-height: 1.5; }
+#page-recommendations .rec-match b { color: #dce4e0; font-size: 17px; }

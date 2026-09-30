@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#141414" />
+  <title>Andromeda — выбор программы</title>
+  <link rel="icon" href="data:," />
+  <script defer src="https://st.max.ru/js/max-web-app.js"></script>
+  <link rel="stylesheet" href="src/styles/tokens.css" />
+  <link rel="stylesheet" href="src/styles/base.css" />
+  <link rel="stylesheet" href="src/styles/layout.css" />
+  <link rel="stylesheet" href="src/styles/components.css" />
+  <link rel="stylesheet" href="src/features/program-detail/styles.css" />
+  <link rel="stylesheet" href="src/features/profile/styles.css" />
+  <link rel="stylesheet" href="src/styles/responsive.css" />
+  <link rel="stylesheet" href="src/styles/dark-theme.css" />
+  <link rel="stylesheet" href="src/features/home/hero.css" />
+  <link rel="stylesheet" href="src/features/home/news.css" />
+  <link rel="stylesheet" href="src/features/home/styles.css" />
+  <link rel="stylesheet" href="src/features/home/action-cards.css" />
+  <link rel="stylesheet" href="src/features/navigation/styles.css" />
+  <link rel="stylesheet" href="src/styles/noise.css" />
+  <link rel="stylesheet" href="src/features/catalog/styles.css" />
+  <link rel="stylesheet" href="src/features/comparison/styles.css" />
+  <link rel="stylesheet" href="src/features/shortlist/styles.css" />
+  <link rel="stylesheet" href="src/features/interest-test/styles.css" />
+  <link rel="stylesheet" href="src/features/recommendations/styles.css" />
+  <link rel="stylesheet" href="src/features/rules/styles.css" />
+  <link rel="stylesheet" href="src/features/news/styles.css" />
+  <link rel="stylesheet" href="src/features/olympiads/styles.css" />
+  <link rel="stylesheet" href="src/features/personal-route/styles.css" />
+  <link rel="stylesheet" href="src/features/admission-check/styles.css" />
+</head>
+<body>
+<div class="app">
+  <button class="menu-backdrop" id="menu-backdrop" type="button" aria-label="Закрыть меню" aria-hidden="true" tabindex="-1"></button>
+  <aside class="sidebar" id="app-sidebar" aria-label="Навигация по приложению">
+    <div class="menu-top">
+      <div class="brand">
+        <div class="brand-copy">
+          <button class="brand-home-link" type="button" data-page="home" aria-label="На главную" title="На главную"><span class="brand-wordmark"><img src="src/assets/andromeda-logo.svg" alt="" />ndromeda</span></button>
+        </div>
+      </div>
+      <button class="icon-btn sidebar-close" id="sidebar-close" type="button" aria-label="Закрыть меню" title="Закрыть меню" aria-controls="app-sidebar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg></button>
+    </div>
+    <div class="menu-scroll">
+      <div class="branched-menu">
+        <section class="nav-section" data-open data-current style="--delay: 40ms">
+          <button class="nav-head" type="button" data-nav-toggle aria-expanded="true" aria-controls="nav-main">
+            <span>Навигация</span><span class="nav-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="nav-body" id="nav-main"><div class="nav-fold">
+            <nav class="nav nav-tree" aria-label="Основные разделы" style="--nav-active-height: 0px">
+              <button class="nav-leaf active" data-page="home" aria-current="page"><span class="nav-text">Главная</span></button>
+              <button class="nav-leaf" data-page="catalog"><span class="nav-text">Найти программы</span></button>
+              <button class="nav-leaf" data-page="compare"><span class="nav-text">Сравнение</span></button>
+              <button class="nav-leaf" data-page="shortlist"><span class="nav-text">Мой выбор</span><b class="nav-count"></b></button>
+              <button class="nav-leaf" data-page="profile"><span class="nav-text">Профиль</span></button>
+            </nav>
+          </div></div>
+        </section>
+        <section class="nav-section" style="--delay: 180ms">
+          <button class="nav-head" type="button" data-nav-toggle aria-expanded="false" aria-controls="nav-admission">
+            <span>Поступление</span><span class="nav-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="nav-body" id="nav-admission"><div class="nav-fold">
+            <nav class="nav nav-tree" aria-label="Инструменты поступления">
+              <button class="nav-leaf" data-page="admission-check" tabindex="-1"><span class="nav-text">Проверка поступления</span></button>
+              <button class="nav-leaf" data-page="proftest" tabindex="-1"><span class="nav-text">ПрофТест</span></button>
+              <button class="nav-leaf" data-page="recommendations" tabindex="-1"><span class="nav-text">Рекомендации</span></button>
+              <button class="nav-leaf" data-page="personal-route" tabindex="-1"><span class="nav-text">Мой маршрут</span></button>
+              <button class="nav-leaf" data-page="olympiads" tabindex="-1"><span class="nav-text">Олимпиады</span></button>
+              <button class="nav-leaf" data-page="news" tabindex="-1"><span class="nav-text">Новости и события</span></button>
+            </nav>
+          </div></div>
+        </section>
+        <section class="nav-section" style="--delay: 110ms">
+          <button class="nav-head" type="button" data-nav-toggle aria-expanded="false" aria-controls="nav-more">
+            <span>Справка</span><span class="nav-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="nav-body" id="nav-more"><div class="nav-fold">
+            <nav class="nav nav-tree" aria-label="Дополнительные разделы">
+              <button class="nav-leaf" data-page="rules" tabindex="-1"><span class="nav-text">Правила и льготы</span></button>
+            </nav>
+          </div></div>
+        </section>
+      </div>
+      <div class="sidebar-bottom"><span class="sidebar-helper-icon" data-hugeicon="message" aria-hidden="true"></span><strong>Andromeda Bot</strong><span>Быстрый ответ в MAX — подробное исследование здесь</span></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-leading">
+        <button class="brand-home-link topbar-brand" type="button" data-page="home" aria-label="На главную" title="На главную"><span class="brand-wordmark"><img src="src/assets/andromeda-logo.svg" alt="" />ndromeda</span></button>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="assistant-open" type="button" title="Спросить Andromeda" aria-label="Спросить Andromeda"><span data-hugeicon="message" aria-hidden="true"></span></button>
+        <button class="profile-access" type="button" data-page="profile" aria-label="Личный кабинет" title="Личный кабинет">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25" /><path d="M5 20c.9-3.2 3.5-5 7-5s6.1 1.8 7 5" /></svg>
+          <span class="profile-access-label" aria-hidden="true">
+            <span class="profile-access-line">
+              <span class="profile-access-char" style="--char-delay: 0ms">Л</span><span class="profile-access-char" style="--char-delay: 6.67ms">и</span><span class="profile-access-char" style="--char-delay: 13.33ms">ч</span><span class="profile-access-char" style="--char-delay: 20ms">н</span><span class="profile-access-char" style="--char-delay: 26.67ms">ы</span><span class="profile-access-char" style="--char-delay: 33.33ms">й</span><span class="profile-access-char" style="--char-delay: 40ms"> </span><span class="profile-access-char" style="--char-delay: 46.67ms">к</span><span class="profile-access-char" style="--char-delay: 53.33ms">а</span><span class="profile-access-char" style="--char-delay: 60ms">б</span><span class="profile-access-char" style="--char-delay: 66.67ms">и</span><span class="profile-access-char" style="--char-delay: 73.33ms">н</span><span class="profile-access-char" style="--char-delay: 80ms">е</span><span class="profile-access-char" style="--char-delay: 86.67ms">т</span>
+            </span>
+            <span class="profile-access-duplicate" aria-hidden="true">
+              <span class="profile-access-char" style="--char-delay: 0ms">Л</span><span class="profile-access-char" style="--char-delay: 6.67ms">и</span><span class="profile-access-char" style="--char-delay: 13.33ms">ч</span><span class="profile-access-char" style="--char-delay: 20ms">н</span><span class="profile-access-char" style="--char-delay: 26.67ms">ы</span><span class="profile-access-char" style="--char-delay: 33.33ms">й</span><span class="profile-access-char" style="--char-delay: 40ms"> </span><span class="profile-access-char" style="--char-delay: 46.67ms">к</span><span class="profile-access-char" style="--char-delay: 53.33ms">а</span><span class="profile-access-char" style="--char-delay: 60ms">б</span><span class="profile-access-char" style="--char-delay: 66.67ms">и</span><span class="profile-access-char" style="--char-delay: 73.33ms">н</span><span class="profile-access-char" style="--char-delay: 80ms">е</span><span class="profile-access-char" style="--char-delay: 86.67ms">т</span>
+            </span>
+          </span>
+        </button>
+        <button class="icon-btn sidebar-toggle" id="sidebar-toggle" type="button" title="Открыть меню" aria-label="Открыть меню" aria-controls="app-sidebar" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></button>
+      </div>
+    </header>
+
+    <div data-page-mount="home"></div>
+
+    <div data-page-mount="catalog"></div>
+
+    <div data-page-mount="program-detail"></div>
+
+    <div data-page-mount="admission-check"></div>
+
+    <div data-page-mount="compare"></div>
+
+    <div data-page-mount="profile"></div>
+
+    <div data-page-mount="shortlist"></div>
+
+    <div data-page-mount="proftest"></div>
+
+    <div data-page-mount="recommendations"></div>
+
+    <div data-page-mount="rules"></div>
+
+    <div data-page-mount="news"></div>
+
+    <div data-page-mount="olympiads"></div>
+
+    <div data-page-mount="personal-route"></div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-backdrop" id="assistant-modal"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Контекстный помощник</div><h2>Спросить Andromeda</h2></div><button class="icon-btn" id="assistant-close" aria-label="Закрыть"><span data-hugeicon="close" aria-hidden="true"></span></button></div><div class="chat-message" id="assistant-answer">Я вижу, что вы изучаете варианты поступления. Могу объяснить отличия программ, условия приёма или учебный план.</div><div class="quick-asks"><button data-ask="Чем ИУ5 отличается от ИУ7?">Чем ИУ5 отличается от ИУ7?</button><button data-ask="Какие условия поступления?">Какие условия поступления?</button><button data-ask="Что изучают на первых курсах?">Что изучают на первых курсах?</button></div></div></div>
+<div class="noise" aria-hidden="true"></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

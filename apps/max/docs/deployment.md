@@ -14,6 +14,6 @@ Do not use this local Compose Redis setup as protected production state. Protect
 
 ## Production prerequisites
 
-Production deployment is not included. An external TLS ingress/reverse proxy must expose the Mini App and forward only the configured Webhook path to the Bot service. Keep Redis private and use TLS with certificate verification. Configure `MINI_APP_ORIGINS` to the exact public origin(s); do not use wildcard CORS. Set secrets using the deployment platform secret store, never a committed env file.
+Production deployment is not included. An external TLS ingress/reverse proxy must expose the Mini App and forward only the configured Webhook path to the Bot service. Keep Redis private and use TLS with certificate verification. Configure `MINI_APP_ORIGINS` to the exact public origin(s) and `MINI_APP_PUBLIC_URL` to the Mini App's public HTTPS origin to show the MAX `open_app` button in `/start` and `/help`; do not use wildcard CORS. Set secrets using the deployment platform secret store, never a committed env file.
 
-The current app has no backend API dependency. Health routes indicate process readiness only; they do not certify MAX or Andromeda availability.
+The catalog needs the Andromeda Public API v1 at `ANDROMEDA_API_BASE_URL`; local Compose waits for Andromeda health before starting the Mini App. Health routes indicate process readiness only; they do not certify MAX or Andromeda availability after startup.

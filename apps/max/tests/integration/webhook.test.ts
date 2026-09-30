@@ -101,7 +101,7 @@ test('MAX webhook runtime returns success only after processing and retains remo
   assert.equal(unsubscribes, 0, 'shutdown must not remove an externally owned MAX subscription');
 });
 
-test('MAX platform adapter converts only typed message buttons into a native keyboard attachment', async (t) => {
+test('MAX platform adapter converts message, callback, and website buttons into a native keyboard attachment', async (t) => {
   const port = await portAvailable();
   let delivered: unknown[] | undefined;
   const api: Record<string, unknown> = {
@@ -119,7 +119,11 @@ test('MAX platform adapter converts only typed message buttons into a native key
     handleUpdate: async () => ({
       kind: 'chat',
       text: 'Выберите уточнение',
-      buttons: [[{ text: '2028' }, { text: '2029' }]],
+      buttons: [[
+        { text: '2028' },
+        { text: 'Сравнить программы', callbackPayload: 'assistant:compare' },
+        { text: 'Открыть каталог', linkUrl: 'https://mini.example.org' },
+      ]],
     }),
   });
   await runtime.start();
@@ -146,11 +150,94 @@ test('MAX platform adapter converts only typed message buttons into a native key
         payload: {
           buttons: [[
             { type: 'message', text: '2028' },
-            { type: 'message', text: '2029' },
+            { type: 'callback', text: 'Сравнить программы', payload: 'assistant:compare' },
+            { type: 'link', text: 'Открыть каталог', url: 'https://mini.example.org' },
           ]],
         },
       }],
     },
+  ]);
+});
+
+test('MAX attachment rejection retries the user reply as plain text', async (t) => {
+  const port = await portAvailable();
+  const attempts: unknown[][] = [];
+  const api: Record<string, unknown> = {
+    getMyInfo: async () => ({ user_id: 99, name: 'bot', first_name: 'bot', username: 'bot', is_bot: true, last_activity_time: 1 }),
+    setMyCommands: async () => ({ commands: [] }),
+    getSubscriptions: async () => [{ url: 'https://localhost/max/webhook' }],
+    sendMessageToChat: async (...args: unknown[]) => {
+      attempts.push(args);
+      if (args[2]) throw Object.assign(new Error('MAX rejected attachment'), { status: 400 });
+      return {};
+    },
+  };
+  const runtime = createMaxBot({
+    config: createWebhookConfig(port),
+    logger: createLogger({ level: 'silent' }),
+    state: new MemoryMaxTransportState(),
+    createSdkBot: factoryFor(api),
+    handleUpdate: async () => ({
+      kind: 'chat', text: 'Andromeda запущена',
+      buttons: [[{ text: 'Открыть каталог', webAppUrl: 'https://mini.example.org' }]],
+    }),
+  });
+  await runtime.start();
+  t.after(() => runtime.stop());
+
+  const result = await fetch(`http://127.0.0.1:${port}/max/webhook`, { method: 'POST', headers, body });
+
+  assert.equal(result.status, 200);
+  assert.equal(attempts.length, 2);
+  assert.match(String(attempts[1]?.[1]), /Andromeda запущена/u);
+  assert.equal(attempts[1]?.[2], undefined);
+});
+
+test('MAX acknowledges response-action callbacks and delivers the assistant follow-up', async (t) => {
+  const port = await portAvailable();
+  const delivered: unknown[][] = [];
+  const api: Record<string, unknown> = {
+    getMyInfo: async () => ({ user_id: 99, name: 'bot', first_name: 'bot', username: 'bot', is_bot: true, last_activity_time: 1 }),
+    setMyCommands: async () => ({ commands: [] }),
+    getSubscriptions: async () => [{ url: 'https://localhost/max/webhook' }],
+    answerOnCallback: async (...args: unknown[]) => { delivered.push(['callback', ...args]); return {}; },
+    sendMessageToChat: async (...args: unknown[]) => { delivered.push(['chat', ...args]); return {}; },
+  };
+  const runtime = createMaxBot({
+    config: createWebhookConfig(port),
+    logger: createLogger({ level: 'silent' }),
+    state: new MemoryMaxTransportState(),
+    createSdkBot: factoryFor(api),
+    handleUpdate: async (update) => {
+      assert.equal(update.kind, 'message_callback');
+      if (update.kind !== 'message_callback' || !update.callbackId) assert.fail('expected a valid callback update');
+      return {
+        kind: 'callback',
+        callbackId: update.callbackId,
+        text: 'Готово.',
+        messages: [{ text: 'Сравнение готово' }],
+      };
+    },
+  });
+  await runtime.start();
+  t.after(() => runtime.stop());
+
+  const callbackBody = JSON.stringify({
+    update_type: 'message_callback',
+    timestamp: 1_700_000_003,
+    chat_id: 77,
+    callback: { callback_id: 'callback-2', payload: 'assistant:compare', user: { user_id: 42 } },
+  });
+  const result = await fetch(`http://127.0.0.1:${port}/max/webhook`, {
+    method: 'POST',
+    headers,
+    body: callbackBody,
+  });
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(delivered, [
+    ['callback', 'callback-2', { message: { text: 'Готово.' } }],
+    ['chat', 77, 'Сравнение готово', undefined],
   ]);
 });
 

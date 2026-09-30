@@ -23439,6 +23439,19 @@
             "type": "string",
             "title": "Entity Id"
           },
+          "entity_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Label"
+          },
           "university_id": {
             "anyOf": [
               {
@@ -27181,7 +27194,9 @@
           "university_scope",
           "funding",
           "study_form",
-          "admission_year"
+          "admission_year",
+          "interests",
+          "olympiad"
         ],
         "title": "ConversationSlot"
       },

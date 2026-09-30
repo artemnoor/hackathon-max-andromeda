@@ -17,7 +17,7 @@ npm run dev:bot
 npm run dev:miniapp
 \`\`\`
 
-Those commands run separate processes. Start the Andromeda backend and Redis according to the root monorepo and services/andromeda guides. The Mini App shell is served on port 8787. The Bot uses polling in development; protected deployments require webhook plus Redis TLS.
+Those commands run separate processes. Start the Andromeda backend and Redis according to the root monorepo and services/andromeda guides. The Mini App is served on port 8787 and reads the real catalog from `ANDROMEDA_API_BASE_URL` after MAX launch validation. The Bot uses polling in development; protected deployments require webhook plus Redis TLS.
 
 For deterministic tests, no MAX token or live AI provider is required:
 

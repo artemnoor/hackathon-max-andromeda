@@ -27,6 +27,7 @@ export type AppConfig = Readonly<{
   webhookSecret: string;
   miniAppPort: number;
   miniAppOrigins: readonly string[];
+  miniAppPublicUrl?: string;
   maxInitDataTtlSeconds: number;
   maxDeepLinkSigningKey: string;
   redisUrl?: string;
@@ -42,7 +43,7 @@ const parseNumber = (fallback: number) => (value: unknown): unknown => {
 };
 
 const parseOrigins = (value: unknown): unknown => {
-  if (value === undefined || value === '') return ['http://localhost:8787'];
+  if (value === undefined || value === '') return ['http://localhost:8787', 'http://127.0.0.1:8787'];
   if (Array.isArray(value)) return value;
   return typeof value === 'string' ? value.split(',').map((item) => item.trim()).filter(Boolean) : value;
 };
@@ -59,7 +60,7 @@ const rawEnvironmentSchema = z.object({
   MAX_API_BASE_URL: z.string().trim().url().default('https://platform-api2.max.ru'),
   ANDROMEDA_API_BASE_URL: z.string().trim().default('http://127.0.0.1:8000'),
   ANDROMEDA_PROFILE_COOKIE_NAME: z.string().trim().default('andromeda_profile_session'),
-  ANDROMEDA_API_TIMEOUT_MS: z.preprocess(parseNumber(5_000), z.number().int().min(250).max(10_000)),
+  ANDROMEDA_API_TIMEOUT_MS: z.preprocess(parseNumber(25_000), z.number().int().min(250).max(40_000)),
   ANDROMEDA_PROFILE_TTL_SECONDS: z.preprocess(parseNumber(2_592_000), z.number().int().min(60).max(2_592_000)),
   ANDROMEDA_QUERY_SESSION_TTL_SECONDS: z.preprocess(parseNumber(86_400), z.number().int().min(60).max(604_800)),
   MAX_TRANSPORT: z.preprocess((value) => typeof value === 'string' ? value.trim().toLowerCase() : value,
@@ -70,6 +71,7 @@ const rawEnvironmentSchema = z.object({
   MAX_WEBHOOK_SECRET: z.string().trim().default(''),
   MINI_APP_PORT: z.preprocess(parseNumber(8787), z.number().int().min(1).max(65535)),
   MINI_APP_ORIGINS: z.preprocess(parseOrigins, z.array(z.string().trim().url()).min(1)),
+  MINI_APP_PUBLIC_URL: optionalTrimmedString,
   MAX_INIT_DATA_TTL_SECONDS: z.preprocess(parseNumber(900), z.number().int().min(60).max(3600)),
   MAX_DEEPLINK_SIGNING_KEY: z.string().trim().default(''),
   REDIS_URL: optionalTrimmedString,
@@ -124,6 +126,10 @@ export const loadConfig = (environment: NodeJS.ProcessEnv = process.env): AppCon
     if (!parseHttpOrigin(origin)) fail('MINI_APP_ORIGINS', nodeEnv, 'must contain origins without paths, credentials, query or fragment');
     if (isProtected && !isProductionOrigin(origin)) fail('MINI_APP_ORIGINS', nodeEnv, 'protected environments require public HTTPS origins');
   }
+  if (raw.MINI_APP_PUBLIC_URL && (!isProductionOrigin(raw.MINI_APP_PUBLIC_URL)
+    || !raw.MINI_APP_ORIGINS.includes(raw.MINI_APP_PUBLIC_URL))) {
+    fail('MINI_APP_PUBLIC_URL', nodeEnv, 'must be a public HTTPS origin listed in MINI_APP_ORIGINS');
+  }
   if (raw.REDIS_URL) {
     let redisUrl: URL;
     try {
@@ -161,6 +167,7 @@ export const loadConfig = (environment: NodeJS.ProcessEnv = process.env): AppCon
     webhookSecret: raw.MAX_WEBHOOK_SECRET,
     miniAppPort: raw.MINI_APP_PORT,
     miniAppOrigins: Object.freeze(normalizeOrigins(raw.MINI_APP_ORIGINS)),
+    ...(raw.MINI_APP_PUBLIC_URL ? { miniAppPublicUrl: raw.MINI_APP_PUBLIC_URL } : {}),
     maxInitDataTtlSeconds: raw.MAX_INIT_DATA_TTL_SECONDS,
     maxDeepLinkSigningKey: raw.MAX_DEEPLINK_SIGNING_KEY || randomBytes(32).toString('base64url'),
     ...(raw.REDIS_URL ? { redisUrl: raw.REDIS_URL } : {}),

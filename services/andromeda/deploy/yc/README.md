@@ -8,6 +8,38 @@ domain :443 → Caddy (automatic HTTPS) → frontend:3000
                          └→ /api/* → backend:8020 (legacy prefix stripped)
 ```
 
+`https://${ANDROMEDA_DOMAIN}/openapi.json` serves the canonical, client-facing
+Public API v1 contract from `../../openapi.json`. It intentionally does not
+proxy FastAPI's full runtime schema, which includes internal operator/admin
+operations. The public URL is configured in `DATA-API.yaml`.
+
+For the existing Nginx host, install the canonical snapshot at
+`/opt/andromeda/public/openapi.json` and serve it from this exact location in
+the TLS server block:
+
+```nginx
+location = /openapi.json {
+    default_type application/json;
+    add_header Cache-Control "public, max-age=300" always;
+    alias /opt/andromeda/public/openapi.json;
+}
+```
+
+Install and enable the low-cost one-minute monitor with:
+
+```sh
+sudo install -o root -g www-data -m 0644 openapi.json /opt/andromeda/public/openapi.json
+sudo install -o root -g root -m 0644 deploy/yc/public-api-monitor.py /opt/andromeda/public-api-monitor.py
+sudo install -o root -g root -m 0644 deploy/yc/andromeda-public-api-monitor.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 deploy/yc/andromeda-public-api-monitor.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now andromeda-public-api-monitor.timer
+```
+
+The monitor checks liveness, the non-empty programs catalog and the public
+OpenAPI document over HTTPS once per minute; results are recorded in the
+system journal.
+
 Staging uses PostgreSQL through `ANDROMEDA_DATABASE_URL`; schema upgrades run
 through Alembic before the backend starts. Keep database credentials only in
 the deployment environment, never in this repository.

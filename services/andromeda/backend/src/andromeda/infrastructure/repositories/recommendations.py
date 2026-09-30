@@ -20,7 +20,7 @@ class CatalogRecommendationRepository(RecommendationCatalogReader):
 
     def list_fingerprints(self) -> tuple[ProgramFingerprint, ...]:
         logger.debug("recommendations_catalog_adapter_start")
-        fingerprints = self._catalog.list_fingerprints()
+        fingerprints = self._catalog.list_fingerprints(require_curriculum_evidence=True)
         logger.info("recommendations_catalog_adapter_complete fingerprint_count=%d", len(fingerprints))
         return fingerprints
 

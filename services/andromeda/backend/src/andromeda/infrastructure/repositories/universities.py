@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from andromeda.modules.universities.contracts.public import Direction, University
+from andromeda.shared.contracts.enums import EducationLevel
 from andromeda.modules.universities.repository.ports import UniversityReader, UniversityWriter
 from andromeda.shared.contracts.ids import DirectionId, UniversityId
 
@@ -41,7 +42,7 @@ class SqlAlchemyUniversityRepository(UniversityReader, UniversityWriter):
                 "university_id": model.university_id,
                 "code": model.code,
                 "name": model.name,
-                "education_level": model.education_level,
+                "education_level": EducationLevel(model.education_level),
             }
         )
 

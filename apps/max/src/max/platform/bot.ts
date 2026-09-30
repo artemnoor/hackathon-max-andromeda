@@ -1,7 +1,10 @@
 import { createServer, type Server } from 'node:http';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { Bot, type ClientOptions } from '@maxhub/max-bot-api';
-import type { BotInfo, UpdateType } from '@maxhub/max-bot-api/types';
+import type { AttachmentRequest, BotInfo, UpdateType } from '@maxhub/max-bot-api/types';
 
 import type { AppConfig } from '../../shared/config.js';
 import { AppError, ConfigError, ERROR_CODES, errorToLogFields } from '../../shared/errors.js';
@@ -23,6 +26,9 @@ export const DEFAULT_ALLOWED_UPDATES = [
   'bot_added', 'user_added', 'bot_stopped', 'bot_removed',
 ] as const satisfies readonly UpdateType[];
 
+// Leave headroom under the MAX API client's five-second request deadline.
+export const MAX_POLL_WAIT_SECONDS = 3;
+
 export const NEUTRAL_BOT_COMMANDS = [
   { name: 'start', description: 'Открыть технический статус бота' },
   { name: 'help', description: 'Помощь по техническому статусу' },
@@ -35,7 +41,8 @@ export type MaxBotDependencies = Readonly<{
     'maxBotToken' | 'maxApiBaseUrl' | 'transport' | 'isProtected' | 'nodeEnv'
     | 'webhookDomain' | 'webhookPort' | 'webhookPath' | 'webhookSecret'
     | 'redisUrl' | 'logLevel' | 'andromedaApiBaseUrl' | 'andromedaProfileCookieName'
-    | 'andromedaApiTimeoutMs' | 'andromedaProfileTtlSeconds' | 'andromedaQuerySessionTtlSeconds'>;
+    | 'andromedaApiTimeoutMs' | 'andromedaProfileTtlSeconds' | 'andromedaQuerySessionTtlSeconds'
+    | 'miniAppPublicUrl'>;
   logger: Logger;
   state?: MaxTransportState;
   handleUpdate?: (update: MaxUpdate) => Promise<MaxBotReply | undefined>;
@@ -120,7 +127,13 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
     state,
     config: dependencies.config,
   });
-  const handleUpdate = dependencies.handleUpdate ?? createMaxUpdateHandler({ assistant });
+  const handleUpdate = dependencies.handleUpdate ?? createMaxUpdateHandler({
+    assistant,
+    ...(dependencies.config.miniAppPublicUrl ? { miniAppPublicUrl: dependencies.config.miniAppPublicUrl } : {}),
+    onReportFailure(error) {
+      logger.warn({ event: 'max_report_generation_failed', errorType: error instanceof Error ? error.name : 'unknown' });
+    },
+  });
   const apiClient = new MaxApiClient({
     limiter: new MaxOutboundRateLimiter({ state }),
     logger: logger.child({ component: 'max.api' }),
@@ -141,25 +154,86 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
   const toAttachments = (buttons: readonly (readonly MaxMessageButton[])[]) => [{
     type: 'inline_keyboard' as const,
     payload: {
-      buttons: buttons.map((row) => row.map((button) => ({ type: 'message' as const, text: button.text }))),
+      buttons: buttons.map((row) => row.map((button) => button.linkUrl
+        ? { type: 'link' as const, text: button.text, url: button.linkUrl }
+        : button.webAppUrl
+        ? {
+          type: 'open_app' as const,
+          text: button.text,
+          // MAX expects the bot's public MAX link here; MINI_APP_PUBLIC_URL is
+          // the hosted page origin and is only used by the Mini App server.
+          web_app: platform.botInfo?.username
+            ? `https://max.ru/${platform.botInfo.username.replace(/^@/u, '')}?startapp`
+            : button.webAppUrl,
+        }
+        : button.callbackPayload
+          ? { type: 'callback' as const, text: button.text, payload: button.callbackPayload }
+          : { type: 'message' as const, text: button.text })),
     },
   }];
+  const uploadReport = async (document: NonNullable<MaxChatMessage['document']>): Promise<AttachmentRequest> => {
+    if (!/^[a-z0-9-]{1,80}\.pdf$/iu.test(document.filename)
+      || document.content.byteLength < 8
+      || document.content.byteLength > 4_000_000
+      || document.content.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 400, undefined, { operation: 'max_pdf_attachment_invalid' });
+    }
+    const directory = await mkdtemp(join(tmpdir(), 'andromeda-max-report-'));
+    const path = join(directory, document.filename);
+    try {
+      await writeFile(path, document.content, { flag: 'wx', mode: 0o600 });
+      const uploaded = await platform.api.uploadFile({ source: path, timeout: 20_000 });
+      return uploaded.toJson();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  };
   const sendChatMessage = async (update: MaxUpdate, message: MaxChatMessage): Promise<void> => {
-    const extra = message.buttons ? { attachments: toAttachments(message.buttons) } : undefined;
-    if (update.chatId !== undefined) {
-      await platform.api.sendMessageToChat(update.chatId, message.text, extra);
-      return;
+    const attachments: AttachmentRequest[] = [];
+    let text = message.text;
+    if (message.document) {
+      try {
+        attachments.push(await uploadReport(message.document));
+      } catch (error) {
+        logger.warn({
+          event: 'max_report_attachment_failed',
+          errorType: error instanceof Error ? error.name : 'unknown',
+        });
+        text = 'Не удалось прикрепить PDF. Краткий ответ приведён выше; попробуйте повторить запрос позже.';
+      }
     }
-    if ('userId' in update && update.userId !== undefined) {
-      await platform.api.sendMessageToUser(update.userId, message.text, extra);
-      return;
+    if (message.buttons) attachments.push(...toAttachments(message.buttons));
+    const send = async (attachments?: AttachmentRequest[]): Promise<void> => {
+      const options = attachments?.length ? { attachments } : undefined;
+      if (update.chatId !== undefined) {
+        await platform.api.sendMessageToChat(update.chatId, text, options);
+        return;
+      }
+      if ('userId' in update && update.userId !== undefined) {
+        await platform.api.sendMessageToUser(update.userId, text, options);
+        return;
+      }
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, 500, undefined, { operation: 'max_reply_target' });
+    };
+    try {
+      await send(attachments);
+      if (message.buttons?.some((row) => row.some((button) => button.linkUrl))) {
+        logger.debug({ event: '[FIX] max_catalog_website_link_sent' });
+      }
+    } catch (error) {
+      const status = error && typeof error === 'object' ? (error as { status?: unknown }).status : undefined;
+      if (attachments.length === 0 || status !== 400) throw error;
+      logger.warn({ event: 'max_message_attachments_rejected', status: 400 });
+      // Keep the actual reply available if MAX rejects an optional keyboard or
+      // document attachment. A failed attachment must not suppress /start.
+      await send();
     }
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 500, undefined, { operation: 'max_reply_target' });
   };
   const deliver = async (update: MaxUpdate, reply: MaxBotReply | undefined): Promise<void> => {
     if (!reply) return;
     if (reply.kind === 'callback') {
       await platform.api.answerOnCallback(reply.callbackId, { message: { text: reply.text } });
+      for (const message of reply.messages ?? []) await sendChatMessage(update, message);
       return;
     }
     if (reply.kind === 'batch') {
@@ -209,7 +283,7 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
       try {
         const response = await platform.api.getUpdates([...DEFAULT_ALLOWED_UPDATES], {
           ...(marker === undefined ? {} : { marker }),
-          timeout: 4,
+          timeout: MAX_POLL_WAIT_SECONDS,
           signal,
         });
         for (const update of response.updates) {
@@ -265,7 +339,7 @@ export const createMaxBot = (dependencies: MaxBotDependencies): MaxBotRuntime =>
       await new Promise<void>((resolve, reject) => {
         const current = server;
         current?.once('error', reject);
-        current?.listen(dependencies.config.webhookPort, () => {
+        current?.listen(dependencies.config.webhookPort, '127.0.0.1', () => {
           current.off('error', reject);
           resolve();
         });

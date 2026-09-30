@@ -34,6 +34,7 @@ from .normalization import (
     direction_university_id,
     normalize_text,
     program_university_id,
+    single_word_russian_inflection_key,
     tokens,
 )
 
@@ -462,6 +463,16 @@ def _match_entity(
         reason, score = CandidateMatchReason.NAME, Decimal("0.95")
     elif normalized_query in normalized_aliases:
         reason, score = CandidateMatchReason.ALIAS, Decimal("0.90")
+    elif (
+        (query_key := single_word_russian_inflection_key(normalized_query)) is not None
+        and query_key
+        in {
+            alias_key
+            for alias in normalized_aliases
+            if (alias_key := single_word_russian_inflection_key(alias)) is not None
+        }
+    ):
+        reason, score = CandidateMatchReason.ALIAS, Decimal("0.84")
     else:
         query_tokens = tokens(normalized_query)
         candidate_tokens = tokens(

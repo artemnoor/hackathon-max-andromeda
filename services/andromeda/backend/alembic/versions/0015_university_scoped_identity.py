@@ -110,9 +110,18 @@ def _existing_identity_columns(bind: sa.Connection) -> tuple[tuple[str, str], ..
 def _replace_column(bind: sa.Connection, table: str, column: str, old: str, new: str) -> None:
     if not _has_column(bind, table, column):
         return
+    column_info = next(
+        item for item in sa.inspect(bind).get_columns(table) if item["name"] == column
+    )
+    table_ref = sa.table(table, sa.column(column, type_=column_info["type"]))
+    value_as_text = sa.cast(table_ref.c[column], sa.Text)
+    replacement = sa.func.replace(value_as_text, old, new)
+    if bind.dialect.name == "postgresql":
+        replacement = sa.cast(replacement, column_info["type"])
     bind.execute(
-        sa.text(f"UPDATE {table} SET {column} = replace({column}, :old, :new) WHERE instr({column}, :old) > 0"),
-        {"old": old, "new": new},
+        sa.update(table_ref)
+        .where(value_as_text.contains(old, autoescape=True))
+        .values({column: replacement})
     )
 
 
@@ -129,6 +138,15 @@ def _disable_referential_checks(bind: sa.Connection) -> None:
         bind.exec_driver_sql("PRAGMA foreign_keys=OFF")
         bind.exec_driver_sql("PRAGMA ignore_check_constraints=ON")
     elif bind.dialect.name == "postgresql":
+        for table, prefix in (
+            ("directions", "ck_direction_id_matches_"),
+            ("educational_programs", "ck_program_id_matches_"),
+        ):
+            if _has_table(bind, table):
+                for constraint in sa.inspect(bind).get_check_constraints(table):
+                    name = constraint.get("name")
+                    if name and name.startswith(prefix):
+                        op.drop_constraint(name, table, type_="check")
         for table in ("curriculum_item_assessments", "curriculum_items", "curricula", "admission_offerings", "educational_programs", "directions", "event_program_links", "venue_program_links", "decision_contexts", "decision_analytics_events", "user_profiles", "proftest_sessions"):
             if _has_table(bind, table):
                 bind.exec_driver_sql(f"ALTER TABLE {table} DISABLE TRIGGER ALL")
@@ -158,8 +176,6 @@ def _rebuild_identity_constraints(bind: sa.Connection, *, legacy: bool) -> None:
             batch.create_check_constraint("ck_program_id_matches_code" if legacy else "ck_program_id_matches_university", program_check)
         return
 
-    op.drop_constraint("ck_direction_id_matches_university" if legacy else "ck_direction_id_matches_code", "directions", type_="check")
-    op.drop_constraint("ck_program_id_matches_university" if legacy else "ck_program_id_matches_code", "educational_programs", type_="check")
     op.create_check_constraint(
         "ck_direction_id_matches_code" if legacy else "ck_direction_id_matches_university",
         "directions",

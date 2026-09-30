@@ -59,6 +59,22 @@ def tokens(value: str) -> frozenset[str]:
     return frozenset(normalize_text(value).replace(":", " ").replace(".", " ").replace("-", " ").split())
 
 
+def single_word_russian_inflection_key(value: str) -> str | None:
+    """Return a conservative stem for inflected one-word Russian aliases."""
+
+    normalized = normalize_text(value)
+    if " " in normalized or not re.fullmatch(r"[а-яё-]+", normalized):
+        return None
+    for suffix in (
+        "иями", "ями", "ами", "ого", "его", "ому", "ему", "ыми", "ими",
+        "иях", "ах", "ях", "ам", "ям", "ов", "ев", "ом", "ем", "ой",
+        "ый", "ий", "ая", "яя", "ое", "ее", "а", "я", "е", "и", "у", "ю",
+    ):
+        if normalized.endswith(suffix) and len(normalized) - len(suffix) >= 4:
+            return normalized[: -len(suffix)]
+    return normalized if len(normalized) >= 4 else None
+
+
 def aliases_for(*, entity_id: str, code: str | None = None, entity_name: str | None = None) -> tuple[str, ...]:
     normalized_id = normalize_text(entity_id)
     if normalized_id in UNIVERSITY_ALIASES:
@@ -93,5 +109,6 @@ __all__ = [
     "direction_university_id",
     "normalize_text",
     "program_university_id",
+    "single_word_russian_inflection_key",
     "tokens",
 ]

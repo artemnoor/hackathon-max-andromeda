@@ -3185,6 +3185,8 @@ export interface components {
         AnalyticsRow: {
             /** Entity Id */
             entity_id: string;
+            /** Entity Label */
+            entity_label?: string | null;
             /** University Id */
             university_id?: string | null;
             /** Direction Id */
@@ -4398,7 +4400,7 @@ export interface components {
          * ConversationSlot
          * @enum {string}
          */
-        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year";
+        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year" | "interests" | "olympiad";
         /** CurriculumItemResponse */
         CurriculumItemResponse: {
             /** Id */

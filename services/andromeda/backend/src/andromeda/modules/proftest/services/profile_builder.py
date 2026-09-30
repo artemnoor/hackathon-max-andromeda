@@ -17,6 +17,43 @@ logger = logging.getLogger("andromeda.proftest.profiling")
 
 
 class UserProfileBuilder:
+    def build_from_explicit_preferences(
+        self,
+        *,
+        preferred_areas: tuple[DisciplineAreaCode, ...],
+        avoided_areas: tuple[DisciplineAreaCode, ...],
+    ) -> UserProfile:
+        """Project user-stated chat preferences into the existing Content Fit contract.
+
+        This is an ephemeral profile for one recommendation request. It does not
+        persist or refine the user's proftest profile.
+        """
+
+        preferred = tuple(dict.fromkeys(preferred_areas))
+        avoided = tuple(dict.fromkeys(avoided_areas))
+        if not preferred and not avoided:
+            raise ValueError("at least one explicit area preference is required")
+        if set(preferred) & set(avoided):
+            raise ValueError("an area cannot be both preferred and avoided")
+        subject_weights = normalize_weights(
+            {area: Decimal("1") for area in preferred}
+        )
+        negative_weights = {area: Decimal("1") for area in avoided}
+        return UserProfile(
+            interests=preferred,
+            anti_interests=tuple(
+                AntiInterest(area=area, intensity=Decimal("1.0000"))
+                for area in avoided
+            ),
+            preferred_subject_weights=subject_weights,
+            negative_weights=negative_weights,
+            confidence=Confidence(
+                value=Decimal("1.0000"),
+                answered_base=1,
+                answered_adaptive=0,
+            ),
+        )
+
     def build(self, answer_set: AnswerSet, questions: tuple[Question, ...], adaptive_questions: tuple[Question, ...] = ()) -> UserProfile:
         question_map = {question.id: question for question in (*questions, *adaptive_questions)}
         subject_weights: defaultdict[DisciplineAreaCode, Decimal] = defaultdict(lambda: ZERO)

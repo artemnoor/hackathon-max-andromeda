@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from andromeda.shared.contracts.errors import ConflictError, ContractError, ErrorCode
 
-from ..contracts.public import QuerySession
+from ..contracts.public import ParsedQuery, QuerySession
 from ..domain.session import merge_parsed_query
 from .rule_parser import RuleBasedQueryParser
 
@@ -20,6 +20,7 @@ class ConversationEngine:
         session: QuerySession,
         text: str,
         *,
+        parsed_query: ParsedQuery | None = None,
         expected_revision: int | None = None,
         now: datetime | None = None,
     ) -> QuerySession:
@@ -32,10 +33,13 @@ class ConversationEngine:
             raise ContractError(ErrorCode.CONFLICT, "query session has expired")
         return merge_parsed_query(
             session,
-            self._parser.parse(text),
+            parsed_query or self.parse(text),
             updated_at=timestamp,
             parser_version=self._parser.version,
         )
+
+    def parse(self, text: str) -> ParsedQuery:
+        return self._parser.parse(text)
 
 
 __all__ = ["ConversationEngine"]

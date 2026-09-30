@@ -1,0 +1,448 @@
+/* Andromeda's graphite theme: soft charcoal surfaces and a muted mineral accent. */
+html,
+body {
+  min-height: 100%;
+  background: #141414;
+  color: var(--ink);
+}
+
+button,
+input,
+select {
+  color: inherit;
+}
+
+.app {
+  background: transparent;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: #090a0c;
+  border-right-color: var(--line);
+}
+
+.brand {
+  padding-bottom: 32px;
+  color: var(--ink);
+}
+
+.nav-label {
+  color: #858d99;
+  padding-left: 11px;
+}
+
+.nav-label-spaced {
+  margin-top: 25px;
+}
+
+.nav {
+  gap: 5px;
+}
+
+.nav button {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: var(--muted);
+  transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+.nav button:hover {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.nav button:active {
+  transform: scale(.985);
+}
+
+.nav button.active {
+  background: #1a1e20;
+  border-color: #303739;
+  box-shadow: inset 2px 0 var(--blue);
+  color: #f5f6f8;
+}
+
+.nav-ico {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: currentColor;
+}
+
+.nav-ico svg {
+  width: 19px;
+  height: 19px;
+}
+
+.nav-count:not(:empty) {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.nav button.active .nav-count:not(:empty) {
+  background: var(--blue-soft);
+  border-color: #303b5e;
+  color: var(--blue-dark);
+}
+
+.sidebar-bottom {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  column-gap: 9px;
+  align-items: center;
+  margin-top: auto;
+  padding: 13px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sidebar-bottom strong {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.sidebar-bottom > span:last-child {
+  grid-column: 2;
+  font-size: 10px;
+}
+
+.sidebar-helper-icon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.sidebar-helper-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.main {
+  background: transparent;
+}
+
+.topbar {
+  color: var(--ink);
+}
+
+.icon-btn,
+.btn-light,
+.panel,
+.program-card,
+.hero-side,
+.fit-card,
+.select-chip,
+.diff,
+.rule,
+.modal {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+}
+
+.icon-btn [data-hugeicon],
+.icon-btn svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+}
+
+.btn-light,
+.btn-dark {
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.btn-light:hover,
+.btn-dark:hover {
+  background: #2a3032;
+}
+
+.btn-primary {
+  border: 1px solid #b5c8d2;
+  background: #a8bac5;
+  color: #111516;
+}
+
+.btn-primary:hover {
+  border-color: #d0dbe0;
+  background: #c2d0d7;
+  color: #101415;
+}
+
+.panel,
+.program-card,
+.hero-side,
+.fit-card,
+.select-chip,
+.diff,
+.rule,
+.modal {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .12);
+}
+
+.program-card:hover {
+  border-color: #596d77;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .26);
+}
+
+.code,
+.stat,
+.info-tile,
+.plan-card,
+.source,
+.chat-message,
+.bucket .program-card {
+  background: var(--surface-raised);
+}
+
+.tag,
+.why span {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.context-cta,
+.score-total,
+.toast {
+  background: var(--surface-inverse);
+  border: 1px solid var(--line);
+}
+
+.context-cta {
+  color: var(--ink);
+}
+
+.context-cta p {
+  color: var(--muted);
+}
+
+.score-total {
+  color: var(--ink);
+}
+
+.score-total span {
+  color: var(--muted);
+}
+
+.progress-panel {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.diff-box {
+  background: var(--blue-soft);
+  border-color: #303c41;
+}
+
+.diff-box h3 {
+  color: var(--blue-dark);
+}
+
+.progress-ring {
+  background: conic-gradient(var(--blue) 0 62%, var(--line) 62%);
+}
+
+.progress-ring:after {
+  background: var(--surface);
+}
+
+.step,
+.test-progress,
+.bar {
+  background: var(--line);
+}
+
+.step.done,
+.bar i {
+  background: var(--blue);
+}
+
+.next-icon,
+.rec-code,
+.detail-code {
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.next-icon {
+  display: grid;
+  place-items: center;
+}
+
+.next-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.filter,
+.search,
+.field input,
+.field select,
+.move-select,
+.plan-toggle button,
+.semester-switch button,
+.answer {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--ink);
+  color-scheme: dark;
+}
+
+.filter:focus,
+.search:focus,
+.field input:focus,
+.field select:focus,
+.move-select:focus {
+  border-color: var(--blue);
+  outline-color: var(--blue);
+}
+
+.search::placeholder,
+.field input::placeholder {
+  color: var(--muted);
+}
+
+.answer:hover,
+.answer.selected,
+.plan-toggle button.active,
+.semester-switch button.active {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+  color: var(--blue-dark);
+}
+
+.bucket {
+  background: var(--surface-raised);
+  border-color: #343943;
+}
+
+.bucket .program-card {
+  border-color: var(--line);
+}
+
+.modal-backdrop {
+  background: rgba(0, 0, 0, .76);
+}
+
+.quick-asks button {
+  border: 1px solid #303b5e;
+}
+
+.empty strong {
+  color: var(--ink);
+}
+
+.page-title h1,
+.detail-header h1,
+.section-head h2 {
+  color: var(--ink);
+}
+
+.page-title p,
+.section-head .muted {
+  color: var(--muted);
+}
+
+.detail-tabs,
+.program-facts,
+.list-row,
+.subject-list {
+  border-color: var(--line);
+}
+
+.profile-hero {
+  border-color: var(--line);
+  background: radial-gradient(ellipse at 88% 15%, #252a2b 0, #191d1e 36%, #131617 100%);
+}
+
+.profile-info-card {
+  border-color: #303c41;
+}
+
+.add-ege-subject {
+  border-color: #424e52;
+  background: var(--surface-raised);
+  color: var(--blue-dark);
+}
+
+.add-ege-subject:hover:not(:disabled),
+.subject-option:hover:not(:disabled) {
+  background: #252b2d;
+}
+
+.profile-avatar {
+  border-color: #3b4549;
+}
+
+.exam-profile-card.active {
+  border-color: #718b99;
+  background: #1c2326;
+}
+
+.fit-card {
+  border-color: var(--line);
+}
+
+.bar {
+  background: #303638;
+}
+
+.plan-row .bar i,
+.interest-line .bar i {
+  background: var(--violet);
+}
+
+.modal,
+.ege-picker {
+  box-shadow: 0 26px 80px rgba(0, 0, 0, .45);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: var(--blue-dark);
+}
+
+@media (max-width: 650px) {
+  .main {
+    padding-top: 14px;
+  }
+
+}

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { AppError, ERROR_CODES } from '../../src/shared/errors.js';
 import { MemoryMaxTransportState } from '../../src/shared/memory-transport-state.js';
 import { createAssistantInteraction } from '../../src/max/bot/assistant.js';
+import { renderAssistantResultWithReport } from '../../src/max/bot/response-renderer.js';
 import { normalizeMaxUpdate, type MaxUpdate } from '../../src/max/bot/update.js';
 import type { AssistantQueryInput, AssistantQueryResponse } from '../../src/max/client/andromeda-api.js';
 
@@ -64,6 +65,89 @@ test('conversation mapping carries only profile cookie and exact assistant sessi
     sessionId: SESSION_1,
     revision: 2,
     lastActivityAt: 100_000,
+  });
+});
+
+test('natural comparison questions use the canonical curriculum comparison result', async () => {
+  const state = new MemoryMaxTransportState();
+  const programIds = ['program:bmstu:09.03.01-02', 'program:bmstu:09.03.04-01'];
+  let compared: readonly string[] = [];
+  const api = {
+    async queryAssistant() {
+      return {
+        result: {
+          ...response(),
+          query: {
+            entity: 'program', metrics: [], scope: 'program', scope_ids: programIds,
+            filters: [], group_by: [], aggregation: 'value', limit: 20,
+          },
+          response: {
+            response_type: 'text', response_mode: 'deterministic', template: 'analytics-summary',
+            text: 'Найдено результатов: 0', actions: [], evidence: [], policy_version: 'response-policy.v1',
+          },
+        } as AssistantQueryResponse,
+        profileCookie: COOKIE,
+      };
+    },
+    async compareSummary(ids: readonly string[]) {
+      compared = ids;
+      return {
+        programs: [{
+          program: { id: programIds[0], code: '09.03.01-02', name: 'Программа A' },
+          totals: { hours: 100, credits: '3.00' }, areaBreakdown: [], sourceGaps: [],
+        }, {
+          program: { id: programIds[1], code: '09.03.04-01', name: 'Программа B' },
+          totals: { hours: 80, credits: '2.00' }, areaBreakdown: [], sourceGaps: [],
+        }],
+        scope: 'all', keyDifferences: [{
+          programAId: programIds[0], programBId: programIds[1], dimension: 'workload',
+          label: 'Общий объём часов', direction: 'more_in_a', valueA: '100', valueB: '80', evidence: [],
+        }],
+        tradeoffs: [], sourceGaps: [],
+      } as never;
+    },
+  };
+  const interaction = createAssistantInteraction({ api, state, config: CONFIG, now: () => 120_000 });
+
+  const result = await interaction.query(
+    messageUpdate(708),
+    'Чем ИУ5 (09.03.01-02) отличается от ИУ7 (09.03.04-01) по учебным планам?',
+  );
+
+  assert.deepEqual(compared, programIds);
+  assert.equal(result.result.response?.template, 'program-comparison-summary');
+  assert.match(result.result.response?.text ?? '', /Общий объём часов: 100 и 80/u);
+  const messages = await renderAssistantResultWithReport(result.result);
+  assert.equal(messages.at(-1)?.document?.content.subarray(0, 5).toString('ascii'), '%PDF-');
+});
+
+test('/start clears the backend session while preserving the profile cookie', async () => {
+  const state = new MemoryMaxTransportState();
+  const calls: Array<{ body: AssistantQueryInput; cookie?: string }> = [];
+  const api = {
+    async queryAssistant(body: AssistantQueryInput, cookie?: string) {
+      calls.push({ body, ...(cookie ? { cookie } : {}) });
+      return calls.length === 1
+        ? { result: response(SESSION_1, 1), profileCookie: COOKIE }
+        : { result: response(SESSION_2, 1) };
+    },
+  };
+  const interaction = createAssistantInteraction({ api, state, config: CONFIG, now: () => 110_000 });
+
+  await interaction.query(messageUpdate(706), 'Первый сценарий');
+  await interaction.resetConversation(messageUpdate(706));
+  await interaction.query(messageUpdate(706), 'Текстовый вопрос');
+
+  assert.deepEqual(calls, [
+    { body: { text: 'Первый сценарий' } },
+    { body: { text: 'Текстовый вопрос' }, cookie: COOKIE },
+  ]);
+  assert.deepEqual(await state.getAndromedaMapping('max-user:706'), {
+    version: 1,
+    profileCookie: COOKIE,
+    sessionId: SESSION_2,
+    revision: 1,
+    lastActivityAt: 110_000,
   });
 });
 

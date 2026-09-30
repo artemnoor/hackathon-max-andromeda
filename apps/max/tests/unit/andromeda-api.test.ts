@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   ANDROMEDA_ASSISTANT_PATH,
+  ANDROMEDA_COMPARE_SUMMARY_PATH,
   AndromedaApiClient,
   MAX_ANDROMEDA_RESPONSE_BYTES,
   type AssistantQueryResponse,
@@ -85,6 +86,34 @@ test('MAX calls the generated Public API path and forwards only the profile cook
   const headers = new Headers(calls[0]?.init?.headers);
   assert.equal(headers.get('cookie'), null);
   assert.equal(headers.get('authorization'), null);
+});
+
+test('comparison summary uses the canonical endpoint with resolved program IDs and no profile data', async () => {
+  const programIds = ['program:bmstu:09.03.01-02', 'program:bmstu:09.03.04-01'];
+  let call: { input: RequestInfo | URL; init?: RequestInit } | undefined;
+  const instance = client({
+    fetcher: async (input, init) => {
+      call = { input, ...(init ? { init } : {}) };
+      return apiResponse({
+        programs: [
+          { program: { id: programIds[0], code: '09.03.01-02', name: 'Программа A' }, areaBreakdown: [], sourceGaps: [] },
+          { program: { id: programIds[1], code: '09.03.04-01', name: 'Программа B' }, areaBreakdown: [], sourceGaps: [] },
+        ],
+        scope: 'all', keyDifferences: [], tradeoffs: [], sourceGaps: [],
+      });
+    },
+  });
+
+  const result = await instance.compareSummary(programIds);
+
+  assert.equal(result.programs.length, 2);
+  assert.equal(call?.init?.method, 'GET');
+  assert.equal(call?.init?.redirect, 'error');
+  const url = new URL(String(call?.input));
+  assert.equal(url.pathname, ANDROMEDA_COMPARE_SUMMARY_PATH);
+  assert.equal(url.searchParams.get('programIds'), programIds.join(','));
+  assert.equal(url.searchParams.get('scope'), 'all');
+  assert.equal(new Headers(call?.init?.headers).get('cookie'), null);
 });
 
 test('profile cookie is captured and rotated; auth cookie is never stored or forwarded', async () => {

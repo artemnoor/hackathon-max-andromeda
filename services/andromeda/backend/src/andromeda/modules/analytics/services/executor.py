@@ -202,6 +202,12 @@ class AnalyticsExecutor:
             rows.append(
                 AnalyticsRow(
                     entity_id=entity_id,
+                    entity_label=(
+                        group[0].program_name
+                        if len(group) == 1
+                        and (group_by or spec.entity) is MetricEntityType.PROGRAM
+                        else None
+                    ),
                     university_id=group[0].university_id if group_by is not MetricEntityType.DIRECTION else None,
                     direction_id=group[0].direction_id if group_by is MetricEntityType.DIRECTION else None,
                     program_ids=tuple(projection.program_id for projection in group),
@@ -223,6 +229,7 @@ def _row_for_projection(projection: ProgramProjection, evidence: tuple[Projectio
     row_evidence = tuple(value.model_copy(update={"metric_code": next((definition.code for definition in definitions if (definition.source_feature_code or definition.code) == value.metric_code), value.metric_code)}) for value in evidence if value.program_id == projection.program_id and value.metric_code in storage_codes)
     return AnalyticsRow(
         entity_id=projection.program_id,
+        entity_label=projection.program_name,
         university_id=projection.university_id,
         direction_id=projection.direction_id,
         program_ids=(projection.program_id,),

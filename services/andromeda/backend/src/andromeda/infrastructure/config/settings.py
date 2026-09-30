@@ -29,6 +29,8 @@ DEFAULT_JEV_MAX_CONCURRENCY = 4
 DEFAULT_POLZA_API_BASE_URL = "https://polza.ai/api/v1"
 DEFAULT_DEEPSEEK_MODEL = "deepseek/deepseek-v4.1-flash"
 DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS = 3.5
+DEFAULT_CONVERSATION_AI_TIMEOUT_SECONDS = 6.5
+DEFAULT_CONVERSATION_AI_RATE_LIMIT_MAX = 12
 DEFAULT_PRESENTATION_LLM_MAX_TOKENS = 1200
 DEFAULT_PRESENTATION_LLM_MAX_CONCURRENCY = 2
 DEFAULT_PRESENTATION_LLM_RATE_WINDOW_SECONDS = 60
@@ -101,6 +103,8 @@ class Settings:
     polza_api_key: str | None = field(default=None, repr=False)
     polza_api_base_url: str = DEFAULT_POLZA_API_BASE_URL
     deepseek_model: str = DEFAULT_DEEPSEEK_MODEL
+    conversation_ai_timeout_seconds: float = DEFAULT_CONVERSATION_AI_TIMEOUT_SECONDS
+    conversation_ai_rate_limit_max: int = DEFAULT_CONVERSATION_AI_RATE_LIMIT_MAX
     presentation_llm_timeout_seconds: float = DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS
     presentation_llm_max_tokens: int = DEFAULT_PRESENTATION_LLM_MAX_TOKENS
     presentation_llm_max_concurrency: int = DEFAULT_PRESENTATION_LLM_MAX_CONCURRENCY
@@ -266,6 +270,7 @@ class Settings:
             jev_api_key=(
                 _optional_secret_from_environment("TYPESAFE_API_KEY")
                 or _optional_secret_from_environment("JEV_API_KEY")
+                or _optional_secret_from_environment("POLZA_AI_API_KEY")
             ),
             jev_admission_resolution_enabled=_bool_from_environment(
                 "JEV_ADMISSION_RESOLUTION_ENABLED", False
@@ -303,6 +308,18 @@ class Settings:
             deepseek_model=os.environ.get(
                 "DEEPSEEK_MODEL", DEFAULT_DEEPSEEK_MODEL
             ).strip(),
+            conversation_ai_timeout_seconds=_bounded_float_from_environment(
+                "CONVERSATION_AI_TIMEOUT_SECONDS",
+                DEFAULT_CONVERSATION_AI_TIMEOUT_SECONDS,
+                0.2,
+                30.0,
+            ),
+            conversation_ai_rate_limit_max=_bounded_int_from_environment(
+                "CONVERSATION_AI_RATE_LIMIT_MAX",
+                DEFAULT_CONVERSATION_AI_RATE_LIMIT_MAX,
+                1,
+                30,
+            ),
             presentation_llm_timeout_seconds=_bounded_float_from_environment(
                 "PRESENTATION_LLM_TIMEOUT_SECONDS",
                 DEFAULT_PRESENTATION_LLM_TIMEOUT_SECONDS,
@@ -605,7 +622,7 @@ def _validate_jev_settings(settings: Settings) -> None:
 
 
 def _validate_presentation_settings(settings: Settings) -> None:
-    if not settings.presentation_llm_enabled or settings.polza_api_key is None:
+    if settings.polza_api_key is None:
         return
     if settings.polza_api_base_url.rstrip("/") != DEFAULT_POLZA_API_BASE_URL:
         raise ValueError("POLZA_API_BASE_URL must be https://polza.ai/api/v1")

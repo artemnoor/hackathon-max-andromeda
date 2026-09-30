@@ -89,6 +89,29 @@ def test_polza_request_is_fixed_bounded_and_does_not_send_rate_identity() -> Non
     assert result.sections[0].section_id == request.sections[0].section.section_id
 
 
+def test_polza_prompt_declares_the_naturalized_output_contract() -> None:
+    request = _request()
+    observed: list[httpx.Request] = []
+
+    def handler(provider_request: httpx.Request) -> httpx.Response:
+        observed.append(provider_request)
+        return _provider_response(request)
+
+    naturalizer = PolzaNaturalizer(
+        _settings(), transport_factory=lambda: httpx.MockTransport(handler)
+    )
+    naturalizer.naturalize(request, rate_limit_key="opaque-owner")
+
+    payload = json.loads(observed[0].content)
+    system_prompt = payload["messages"][0]["content"]
+    assert '"schema_version"' in system_prompt
+    assert '"source-backed-naturalization.v1"' in system_prompt
+    assert '"sections"' in system_prompt
+    assert '"section_id"' in system_prompt
+    assert '"reference_ids"' in system_prompt
+    assert "Do not copy request-only fields" in system_prompt
+
+
 def test_polza_does_not_follow_redirects_or_retry_provider_failures() -> None:
     request = _request()
     observed: list[httpx.Request] = []

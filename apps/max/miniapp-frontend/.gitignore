@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.playwright-cli/
+.ai-factory/
+.env
+.env.*
+!.env.example

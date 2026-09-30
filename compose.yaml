@@ -80,9 +80,21 @@ services:
       ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
       ANDROMEDA_PROFILE_COOKIE_SECURE: "false"
       ANDROMEDA_PROFILE_COOKIE_SAMESITE: lax
-      JEV_ENABLED: "false"
-      JEV_SHADOW_ENABLED: "false"
-      JEV_CALIBRATION_ENABLED: "false"
+      JEV_ENABLED: "${JEV_ENABLED:-false}"
+      JEV_SHADOW_ENABLED: "${JEV_SHADOW_ENABLED:-false}"
+      JEV_CALIBRATION_ENABLED: "${JEV_CALIBRATION_ENABLED:-false}"
+      JEV_CALIBRATION_LOCK_PATH: "${JEV_CALIBRATION_LOCK_PATH:-/app/config/jev/locks/next-action.typesafe-jev.v2.lock.json}"
+      JEV_CALIBRATION_MODE: "${JEV_CALIBRATION_MODE:-production}"
+      JEV_RUNTIME_PROVIDER: "${JEV_RUNTIME_PROVIDER:-typesafe}"
+      JEV_ENDPOINT: "${JEV_ENDPOINT:-https://polza.ai/api}"
+      JEV_MODEL: "${JEV_MODEL:-typesafe/jev}"
+      TYPESAFE_API_KEY: "${TYPESAFE_API_KEY:-}"
+      JEV_API_KEY: "${JEV_API_KEY:-}"
+      PRESENTATION_LLM_ENABLED: ${PRESENTATION_LLM_ENABLED:-true}
+      POLZA_AI_API_KEY: ${POLZA_AI_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek/deepseek-v4.1-flash}
+      CONVERSATION_AI_TIMEOUT_SECONDS: ${CONVERSATION_AI_TIMEOUT_SECONDS:-15}
+      CONVERSATION_AI_RATE_LIMIT_MAX: ${CONVERSATION_AI_RATE_LIMIT_MAX:-12}
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,7 +125,7 @@ services:
       MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
       ANDROMEDA_API_BASE_URL: http://andromeda:8020
       ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
-      ANDROMEDA_API_TIMEOUT_MS: "5000"
+      ANDROMEDA_API_TIMEOUT_MS: ${ANDROMEDA_API_TIMEOUT_MS:-25000}
       ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
       ANDROMEDA_QUERY_SESSION_TTL_SECONDS: "86400"
       MAX_TRANSPORT: polling
@@ -122,7 +134,8 @@ services:
       MAX_WEBHOOK_PATH: /max/webhook
       MAX_WEBHOOK_SECRET: ""
       MINI_APP_PORT: "8787"
-      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787,http://127.0.0.1:8787}
+      MINI_APP_PUBLIC_URL: ${MINI_APP_PUBLIC_URL:-}
       MAX_INIT_DATA_TTL_SECONDS: "900"
       MAX_DEEPLINK_SIGNING_KEY: ""
       REDIS_URL: redis://redis:6379/0
@@ -149,7 +162,7 @@ services:
       MAX_API_BASE_URL: ${MAX_API_BASE_URL:-https://platform-api2.max.ru}
       ANDROMEDA_API_BASE_URL: http://andromeda:8020
       ANDROMEDA_PROFILE_COOKIE_NAME: andromeda_profile_session
-      ANDROMEDA_API_TIMEOUT_MS: "5000"
+      ANDROMEDA_API_TIMEOUT_MS: ${ANDROMEDA_API_TIMEOUT_MS:-25000}
       ANDROMEDA_PROFILE_TTL_SECONDS: "2592000"
       ANDROMEDA_QUERY_SESSION_TTL_SECONDS: "86400"
       MAX_TRANSPORT: polling
@@ -158,13 +171,15 @@ services:
       MAX_WEBHOOK_PATH: /max/webhook
       MAX_WEBHOOK_SECRET: ""
       MINI_APP_PORT: "8787"
-      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787}
+      MINI_APP_ORIGINS: ${MINI_APP_ORIGINS:-http://localhost:8787,http://127.0.0.1:8787}
       MAX_INIT_DATA_TTL_SECONDS: "900"
       MAX_DEEPLINK_SIGNING_KEY: ""
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
     depends_on:
       redis:
+        condition: service_healthy
+      andromeda:
         condition: service_healthy
     ports:
       - "127.0.0.1:${MINI_APP_PORT:-8787}:8787"

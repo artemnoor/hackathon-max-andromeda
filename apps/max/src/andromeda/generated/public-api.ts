@@ -5,7 +5,7 @@
 
 // Canonical contract: services/andromeda/openapi.json
 // Upstream Andromeda: e8118b611220320f17ab60e936455680441e004d
-// OpenAPI SHA-256: bbe2b49661d13fcadbb9849009c02c6493dce40e62961613fd0a8da3fe1ec70e
+// OpenAPI SHA-256: 90a3b5fd6281a37b2b09a655768c572bd5ec0a1b2904bd0e96f03bf27224e2cb
 export interface paths {
     "/api/v1/decision/final-choice": {
         parameters: {
@@ -1575,6 +1575,8 @@ export interface components {
         AnalyticsRow: {
             /** Entity Id */
             entity_id: string;
+            /** Entity Label */
+            entity_label?: string | null;
             /** University Id */
             university_id?: string | null;
             /** Direction Id */
@@ -2427,7 +2429,7 @@ export interface components {
          * ConversationSlot
          * @enum {string}
          */
-        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year";
+        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year" | "interests" | "olympiad";
         /** CurriculumItemResponse */
         CurriculumItemResponse: {
             /** Id */

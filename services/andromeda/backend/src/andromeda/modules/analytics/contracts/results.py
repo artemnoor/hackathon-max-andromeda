@@ -27,6 +27,7 @@ class AnalyticsResultStatus(StrEnum):
 
 class AnalyticsRow(ContractModel):
     entity_id: str
+    entity_label: str | None = Field(default=None, min_length=1, max_length=256)
     university_id: UniversityId | None = None
     direction_id: DirectionId | None = None
     program_ids: tuple[ProgramId, ...] = Field(default=(), max_length=100)

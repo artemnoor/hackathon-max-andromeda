@@ -22,7 +22,13 @@ def build_response_envelope(
     for row in result.rows:
         for evidence in row.evidence:
             evidence_by_metric[evidence.metric_code] = evidence_by_metric.get(evidence.metric_code, 0) + 1
-    payload: dict[str, object] = {"rows": [row.model_dump(mode="json") for row in result.rows]}
+    payload: dict[str, object] = {
+        "rows": [row.model_dump(mode="json") for row in result.rows],
+        "metric_definitions": [
+            definition.model_dump(mode="json")
+            for definition in result.metric_definitions
+        ],
+    }
     plan = policy.to_plan(
         text=text,
         data=payload,

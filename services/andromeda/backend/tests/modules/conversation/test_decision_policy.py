@@ -33,8 +33,24 @@ def _session(next_action: NextAction, *, intent: ConversationIntent = Conversati
 def test_rule_policy_asks_for_missing_admission_slots() -> None:
     decision = RuleBasedDecisionPolicy().decide(_session(NextAction.ASK_FOR_EXAMS, intent=ConversationIntent.ADMISSION_SEARCH))
     assert decision.action is DecisionAction.ASK_CLARIFICATION
-    assert decision.options
-    assert "ЕГЭ" in decision.question
+    assert decision.options == ()
+    assert decision.question == (
+        "Какие баллы ЕГЭ у вас есть? Укажите предмет и результат каждого экзамена."
+    )
+
+
+def test_unresolved_requested_university_is_not_rendered_as_a_scope_choice() -> None:
+    session = _session(
+        NextAction.ASK_FOR_UNIVERSITY_SCOPE,
+        intent=ConversationIntent.PROGRAM_DISCOVERY,
+    ).model_copy(update={"unresolved_entities": ("university:МФТИ",)})
+
+    decision = RuleBasedDecisionPolicy().decide(session)
+
+    assert decision.action is DecisionAction.ASK_CLARIFICATION
+    assert "МФТИ" in (decision.question or "")
+    assert "не нашла вуз" in (decision.question or "").casefold()
+    assert decision.options == ()
 
 
 def test_rule_policy_selects_compare_and_execute_actions() -> None:

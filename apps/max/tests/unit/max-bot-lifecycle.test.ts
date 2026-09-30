@@ -4,7 +4,12 @@ import { test } from 'node:test';
 import { loadConfig } from '../../src/shared/config.js';
 import { createLogger } from '../../src/shared/logger.js';
 import { MemoryMaxTransportState } from '../../src/shared/memory-transport-state.js';
-import { createMaxBot, type MaxPlatform, type MaxSdkFactory } from '../../src/max/platform/bot.js';
+import {
+  createMaxBot,
+  MAX_POLL_WAIT_SECONDS,
+  type MaxPlatform,
+  type MaxSdkFactory,
+} from '../../src/max/platform/bot.js';
 
 const startUpdate = {
   update_type: 'bot_started', timestamp: 123, chat_id: 77,
@@ -36,6 +41,7 @@ test('polling processes updates sequentially, suppresses duplicates, and preserv
   let sendAttempts = 0;
   const sent: number[] = [];
   const markers: Array<number | undefined> = [];
+  const pollTimeouts: number[] = [];
   const api: Record<string, unknown> = {
     getMyInfo: async () => ({ user_id: 99, name: 'bot', first_name: 'bot', username: 'bot', is_bot: true, last_activity_time: 1 }),
     setMyCommands: async () => ({ commands: [] }),
@@ -45,9 +51,10 @@ test('polling processes updates sequentially, suppresses duplicates, and preserv
       sent.push(chatId);
       return {};
     },
-    getUpdates: async (_types: unknown, options: { marker?: number; signal?: AbortSignal }) => {
+    getUpdates: async (_types: unknown, options: { marker?: number; signal?: AbortSignal; timeout?: number }) => {
       calls += 1;
       markers.push(options.marker);
+      if (options.timeout !== undefined) pollTimeouts.push(options.timeout);
       if (calls === 1 || calls === 2) return { updates: [startUpdate], marker: 50 };
       return new Promise((_resolve, reject) => {
         options.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
@@ -64,6 +71,8 @@ test('polling processes updates sequentially, suppresses duplicates, and preserv
   assert.equal(markers[0], undefined);
   assert.equal(markers[1], undefined, 'failed work must keep the previous marker for retry');
   assert.equal(markers[2], 50, 'marker advances only after the batch succeeds');
+  assert.ok(pollTimeouts.length >= 3 && pollTimeouts.every((timeout) => timeout === MAX_POLL_WAIT_SECONDS));
+  assert.equal(MAX_POLL_WAIT_SECONDS, 3);
 });
 
 test('protected bot runtime refuses local memory state', () => {

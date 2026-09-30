@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from andromeda.infrastructure.adapters.policy_approval_conflicts import (
     SqlAlchemyPolicyApprovalConflictReader,
 )
+from andromeda.infrastructure.adapters.polza_conversation_ai import PolzaConversationAI
 from andromeda.infrastructure.adapters.polza_naturalizer import PolzaNaturalizer
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.jev.runtime import (
@@ -156,6 +157,7 @@ from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataRea
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.admissions.repository.ports import AdmissionCycleRepository
 from andromeda.modules.admissions.services.admissions import AdmissionService
+from andromeda.modules.analytics.domain.metric_registry import MetricRegistry
 from andromeda.modules.analytics.services.cache import AnalyticsResultCache
 from andromeda.modules.analytics.services.executor import AnalyticsExecutor
 from andromeda.modules.analytics.services.projection_builder import (
@@ -170,6 +172,9 @@ from andromeda.modules.comparison.services.compare_programs import (
 )
 from andromeda.modules.comparison.services.compare_summary import (
     ComparisonSummaryService,
+)
+from andromeda.modules.conversation.contracts.language import (
+    ConversationAssistantAIPort,
 )
 from andromeda.modules.conversation.contracts.policy import DecisionPolicyPort
 from andromeda.modules.conversation.services.assistant import AssistantService
@@ -241,6 +246,7 @@ from andromeda.modules.presentation.services.rule_response_policy import (
 )
 from andromeda.modules.proftest.repository.ports import UserProfileRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
+from andromeda.modules.proftest.services.profile_builder import UserProfileBuilder
 
 logger = logging.getLogger("andromeda.composition.container")
 
@@ -302,6 +308,9 @@ class AndromedaContainer:
     engine: Engine
     settings: Settings
     analytics_cache: AnalyticsResultCache = field(default_factory=AnalyticsResultCache)
+    _metric_registry: MetricRegistry = field(
+        default_factory=MetricRegistry, init=False, repr=False, compare=False
+    )
     _decision_policy_cache: DecisionPolicyPort | None = field(
         default=None, init=False, repr=False, compare=False
     )
@@ -315,6 +324,12 @@ class AndromedaContainer:
         default=None, init=False, repr=False, compare=False
     )
     _presentation_naturalizer_built: bool = field(
+        default=False, init=False, repr=False, compare=False
+    )
+    _conversation_ai_cache: ConversationAssistantAIPort | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _conversation_ai_built: bool = field(
         default=False, init=False, repr=False, compare=False
     )
 
@@ -826,6 +841,7 @@ class AndromedaContainer:
     def analytics_executor(self) -> AnalyticsExecutor:
         return AnalyticsExecutor(
             SqlAlchemyProgramProjectionRepository(self.engine),
+            registry=self._metric_registry,
             cache=self.analytics_cache,
             semantic_predicate_port=self.jevql_adapter(),
         )
@@ -916,6 +932,9 @@ class AndromedaContainer:
             self.analytics_executor(),
             self.admission_fit_service(session),
             self.program_reader(session),
+            curricula=self.curriculum_reader(session),
+            admissions=self.admission_reader(session),
+            admission_benefits=self.admission_benefit_repository(session),
             entity_resolver=self.entity_resolver(session),
             policy_resolver=self.effective_policy_resolver(session),
             claim_lookup=self.knowledge_candidate_repository(session),
@@ -923,6 +942,14 @@ class AndromedaContainer:
                 session
             ),
             knowledge_naturalizer=self.presentation_naturalizer(),
+            conversation_ai=self.conversation_ai(),
+            recommendation_service=self.recommendation_service(session),
+            recommendation_catalog=self.recommendation_catalog_reader(session),
+            explicit_preference_profile_builder=UserProfileBuilder(),
+            universities=self.university_reader(session),
+            allowed_metric_codes=tuple(
+                str(definition.code) for definition in self._metric_registry.all()
+            ),
             knowledge_policy_enabled=self.settings.knowledge_policy_assistant_enabled,
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
@@ -934,6 +961,26 @@ class AndromedaContainer:
         cached_policy = self._decision_policy_cache
         assert cached_policy is not None
         return cached_policy
+
+    def conversation_ai(self) -> ConversationAssistantAIPort | None:
+        """Compose query understanding whenever a provider key is configured.
+
+        Free-form intent/entity interpretation is part of the assistant's
+        conversation path; it must not depend on the separate switch that
+        controls optional prose naturalization.
+        """
+
+        if not self.settings.polza_api_key:
+            return None
+        if not self._conversation_ai_built:
+            provider: ConversationAssistantAIPort = PolzaConversationAI(self.settings)
+            object.__setattr__(self, "_conversation_ai_cache", provider)
+            object.__setattr__(self, "_conversation_ai_built", True)
+            logger.info(
+                "conversation_ai_composed provider=polza model=%s",
+                self.settings.deepseek_model,
+            )
+        return self._conversation_ai_cache
 
     def presentation_naturalizer(self) -> ResponseNaturalizerPort | None:
         """Compose an optional prose provider without making it a core dependency."""

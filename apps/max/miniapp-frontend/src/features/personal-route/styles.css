@@ -1,0 +1,72 @@
+#page-personal-route {
+  --route-line: rgba(207, 212, 211, .25);
+}
+
+#page-personal-route .page-title { margin-bottom: 30px; }
+#page-personal-route .page-title h1 { max-width: 930px; font-size: clamp(42px, 6vw, 72px); line-height: .98; letter-spacing: -.065em; }
+#page-personal-route .page-title p { max-width: 58ch; font-size: 14px; line-height: 1.7; }
+#page-personal-route .eyebrow { color: #a2aaa8; }
+#page-personal-route .title-actions { padding-top: 24px; }
+#page-personal-route .title-actions .btn,
+#page-personal-route .route-next .btn { min-height: 40px; padding: 9px 13px; border: 1px solid var(--route-line); border-radius: 3px; background: transparent; color: #e8ecea; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; box-shadow: none; }
+#page-personal-route .title-actions .btn:hover,
+#page-personal-route .route-next .btn:hover { border-color: rgba(255,255,255,.65); background: rgba(255,255,255,.05); color: #fff; }
+
+#page-personal-route .route-overview { display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: center; gap: 17px 24px; padding: 22px 0 20px; border-block: 1px solid var(--route-line); }
+#page-personal-route .route-progress-copy { min-width: 0; }
+#page-personal-route .route-progress-copy .eyebrow { display: block; margin-bottom: 9px; }
+#page-personal-route .route-progress-copy h2 { margin: 0 0 8px; color: #e9edeb; font-size: clamp(20px, 2.5vw, 28px); line-height: 1.2; letter-spacing: -.035em; }
+#page-personal-route .route-progress-copy p { max-width: 60ch; margin: 0; color: #9ca4a1; font-size: 12px; line-height: 1.6; }
+#page-personal-route .route-progress-ring { position: relative; display: grid; width: 78px; height: 78px; place-items: center; border-radius: 50%; background: conic-gradient(#a9bdb5 var(--route-progress), rgba(207,212,211,.14) var(--route-progress)); }
+#page-personal-route .route-progress-ring::after { position: absolute; inset: 6px; border: 1px solid rgba(207,212,211,.15); border-radius: inherit; background: #090a0b; content: ""; }
+#page-personal-route .route-progress-ring b { position: relative; z-index: 1; color: #f0f2ef; font-size: 16px; font-variant-numeric: tabular-nums; }
+#page-personal-route .route-stats { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#page-personal-route .route-stats > div { display: grid; min-height: 62px; align-content: center; gap: 4px; padding: 10px 12px; border: 1px solid rgba(207,212,211,.17); }
+#page-personal-route .route-stats b { color: #e9edeb; font-size: 18px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+#page-personal-route .route-stats span { color: #929a97; font-size: 10px; line-height: 1.35; }
+
+#page-personal-route .route-steps { margin-top: 33px; }
+#page-personal-route .route-section-heading { margin-bottom: 12px; }
+#page-personal-route .route-section-heading .eyebrow { display: block; margin-bottom: 7px; }
+#page-personal-route .route-section-heading h2 { margin: 0; color: #e5e9e7; font-size: 22px; letter-spacing: -.035em; }
+#page-personal-route .route-step-list { border-top: 1px solid var(--route-line); }
+#page-personal-route .route-step { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-width: 0; padding: 17px 0; border-bottom: 1px solid rgba(207,212,211,.17); }
+#page-personal-route .route-step-index { align-self: start; padding-top: 3px; color: #89928f; font-size: 10px; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+#page-personal-route .route-step-copy { min-width: 0; }
+#page-personal-route .route-step-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+#page-personal-route .route-step-heading h3 { margin: 0; color: #e5e9e7; font-size: 15px; line-height: 1.35; }
+#page-personal-route .route-step-status { color: #a2aaa8; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+#page-personal-route .route-step.is-complete .route-step-status { color: #b6c5bd; }
+#page-personal-route .route-step-copy p { max-width: 70ch; margin: 5px 0 0; color: #929a97; font-size: 11px; line-height: 1.55; }
+#page-personal-route .route-step-action { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; padding: 5px 0 5px 10px; border: 0; background: transparent; color: #d8ddda; font-size: 10px; cursor: pointer; }
+#page-personal-route .route-step-action:hover { color: #fff; }
+#page-personal-route .route-step-action span { font-size: 15px; transition: transform .16s ease; }
+#page-personal-route .route-step-action:hover span { transform: translateX(3px); }
+#page-personal-route .route-step-action:focus-visible { outline: 1px solid rgba(220,230,226,.75); outline-offset: 3px; }
+
+#page-personal-route .route-next { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 28px; padding: 19px 0; border-block: 1px solid var(--route-line); }
+#page-personal-route .route-next .eyebrow { display: block; margin-bottom: 7px; }
+#page-personal-route .route-next h2 { margin: 0 0 5px; color: #e9edeb; font-size: 18px; line-height: 1.3; }
+#page-personal-route .route-next p { max-width: 65ch; margin: 0; color: #929a97; font-size: 11px; line-height: 1.55; }
+#page-personal-route .route-resources { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 19px; padding-top: 18px; }
+#page-personal-route .route-resources > span { color: #858d8a; font-size: 10px; }
+#page-personal-route .route-resources .text-btn { color: #c3cbc7; font-size: 10px; }
+
+@media (max-width: 650px) {
+  #page-personal-route .page-title { margin-bottom: 22px; }
+  #page-personal-route .page-title h1 { font-size: clamp(38px, 10vw, 52px); }
+  #page-personal-route .page-title p { font-size: 13px; }
+  #page-personal-route .title-actions { padding-top: 14px; }
+  #page-personal-route .route-overview { grid-template-columns: minmax(0, 1fr) 64px; gap: 15px 12px; padding-block: 17px; }
+  #page-personal-route .route-progress-ring { width: 62px; height: 62px; }
+  #page-personal-route .route-progress-ring::after { inset: 5px; }
+  #page-personal-route .route-progress-ring b { font-size: 13px; }
+  #page-personal-route .route-stats { gap: 6px; }
+  #page-personal-route .route-stats > div { min-height: 58px; padding: 8px; }
+  #page-personal-route .route-stats b { font-size: 16px; }
+  #page-personal-route .route-stats span { font-size: 9px; }
+  #page-personal-route .route-step { grid-template-columns: 25px minmax(0, 1fr); gap: 10px; padding: 15px 0; }
+  #page-personal-route .route-step-action { grid-column: 2; justify-self: start; min-height: 30px; margin-top: 2px; padding-left: 0; }
+  #page-personal-route .route-next { align-items: flex-start; flex-direction: column; gap: 14px; margin-top: 22px; }
+  #page-personal-route .route-next .btn { width: 100%; }
+}

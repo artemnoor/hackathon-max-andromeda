@@ -20,6 +20,7 @@ def _clear_jev(monkeypatch: pytest.MonkeyPatch) -> None:
         "JEV_MODEL",
         "TYPESAFE_API_KEY",
         "JEV_API_KEY",
+        "POLZA_AI_API_KEY",
         "JEVQL_ENABLED",
         "JEVQL_ENDPOINT",
         "JEVQL_TOKEN",
@@ -83,6 +84,21 @@ def test_jev_alias_environment_variables_are_supported(monkeypatch: pytest.Monke
     assert settings.jev_endpoint == "https://polza.ai/api"
     assert settings.jev_model == "typesafe/jev"
     assert "jev-alias-secret" not in repr(settings)
+
+
+def test_jev_can_reuse_the_configured_polza_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("POLZA_AI_API_KEY", "shared-provider-secret")
+    monkeypatch.setenv("JEV_BASE_URL", "https://polza.ai/api")
+    monkeypatch.setenv("JEV_MODEL", "typesafe/jev")
+
+    settings = Settings.from_environment()
+
+    assert settings.jev_api_key == "shared-provider-secret"
+    assert settings.jev_endpoint == "https://polza.ai/api"
+    assert settings.jev_model == "typesafe/jev"
+    assert "shared-provider-secret" not in repr(settings)
 
 
 def test_official_environment_variables_take_precedence_over_aliases(

@@ -4,10 +4,7 @@ solution:
   name: "Andromeda"
 
 api:
-  # Replace this reserved placeholder with the public HTTPS deployment URL
-  # before the organizer runs live checks. The validator checks the contract,
-  # not endpoint availability.
-  baseUrl: "https://andromeda.example.org"
+  baseUrl: "https://max.code-slicer.ru"
   openapi: "./openapi.json"
   defaultHeaders:
     Accept: "application/json"

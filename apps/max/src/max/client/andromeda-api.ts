@@ -6,8 +6,11 @@ import { normalizeAndromedaApiBaseUrl } from '../../shared/url-policy.js';
 
 type AssistantOperation = NonNullable<paths['/api/v1/assistant/query']['post']>;
 type OpenApiAssistantQueryRequest = AssistantOperation['requestBody']['content']['application/json'];
+type CompareSummaryOperation = NonNullable<paths['/api/v1/compare/summary']['get']>;
+type CompareSummaryResponse = CompareSummaryOperation['responses'][200]['content']['application/json'];
 export type AssistantQueryInput = Pick<OpenApiAssistantQueryRequest, 'text' | 'sessionId' | 'expectedRevision'>;
 export type AssistantQueryResponse = AssistantOperation['responses'][200]['content']['application/json'];
+export type ProgramComparisonSummary = CompareSummaryResponse;
 type AndromedaErrorResponse = components['schemas']['ErrorResponse'];
 
 export type AssistantQueryResult = Readonly<{
@@ -27,10 +30,12 @@ export type AndromedaApiClientOptions = Readonly<{
 }>;
 
 export const ANDROMEDA_ASSISTANT_PATH = '/api/v1/assistant/query';
+export const ANDROMEDA_COMPARE_SUMMARY_PATH = '/api/v1/compare/summary';
 export const MAX_ANDROMEDA_RESPONSE_BYTES = 128_000;
 const MAX_ASSISTANT_TEXT_CODEPOINTS = 4_000;
 const MAX_ASSISTANT_TEXT_BYTES = 16_000;
 const SESSION_ID_PATTERN = /^query-session:[0-9a-f]{32}$/u;
+const PROGRAM_ID_PATTERN = /^program:[a-z0-9-]+:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$/u;
 const PROFILE_COOKIE_PATTERN = /^[A-Za-z0-9_-]{32,256}$/u;
 const COOKIE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/u;
 const VALID_RESPONSE_MODES = new Set([
@@ -213,7 +218,7 @@ export class AndromedaApiClient {
     if (!COOKIE_NAME_PATTERN.test(options.profileCookieName)) {
       throw new AppError(ERROR_CODES.CONFIG_INVALID, 500, undefined, { field: 'ANDROMEDA_PROFILE_COOKIE_NAME' });
     }
-    if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 250 || options.timeoutMs > 10_000) {
+    if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 250 || options.timeoutMs > 40_000) {
       throw new AppError(ERROR_CODES.CONFIG_INVALID, 500, undefined, { field: 'ANDROMEDA_API_TIMEOUT_MS' });
     }
     this.baseUrl = normalized;
@@ -284,6 +289,71 @@ export class AndromedaApiClient {
       if (!(cause instanceof AppError)) {
         this.options.logger?.warn({
           operation: 'andromeda_assistant_query',
+          errorCode: error.code,
+          durationMs: Math.max(0, this.now() - started),
+        });
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async compareSummary(programIds: readonly string[], signal?: AbortSignal): Promise<ProgramComparisonSummary> {
+    if (programIds.length < 2 || programIds.length > 3
+      || new Set(programIds).size !== programIds.length
+      || !programIds.every((id) => PROGRAM_ID_PATTERN.test(id))) {
+      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 400, undefined, { field: 'programIds' });
+    }
+    const endpoint = new URL(`${this.baseUrl}${ANDROMEDA_COMPARE_SUMMARY_PATH}`);
+    endpoint.searchParams.set('programIds', programIds.join(','));
+    endpoint.searchParams.set('scope', 'all');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.options.timeoutMs);
+    const started = this.now();
+    try {
+      const response = await this.fetcher(endpoint, {
+        method: 'GET',
+        redirect: 'error',
+        headers: { accept: 'application/json' },
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
+      });
+      const payload = parseJson(await readBoundedBody(response), 'andromeda_comparison_json');
+      if (!response.ok) throw statusError(response.status, false, parseErrorResponse(payload));
+      if (response.status !== 200
+        || response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json'
+        || !isRecord(payload)
+        || !Array.isArray(payload['programs']) || payload['programs'].length !== programIds.length
+        || !payload['programs'].every((overview) => isRecord(overview)
+          && isRecord(overview['program'])
+          && typeof overview['program']['id'] === 'string'
+          && typeof overview['program']['code'] === 'string'
+          && typeof overview['program']['name'] === 'string'
+          && Array.isArray(overview['areaBreakdown'])
+          && Array.isArray(overview['sourceGaps']))
+        || !Array.isArray(payload['keyDifferences']) || payload['keyDifferences'].length > 128
+        || !payload['keyDifferences'].every((difference) => isRecord(difference)
+          && typeof difference['label'] === 'string' && typeof difference['dimension'] === 'string')
+        || !Array.isArray(payload['tradeoffs']) || payload['tradeoffs'].length > 128
+        || !Array.isArray(payload['sourceGaps']) || payload['sourceGaps'].length > 32) {
+        throw dependencyError('andromeda_comparison_contract');
+      }
+      this.options.logger?.debug({
+        operation: 'andromeda_compare_summary',
+        status: response.status,
+        durationMs: Math.max(0, this.now() - started),
+        programCount: programIds.length,
+      });
+      return payload as ProgramComparisonSummary;
+    } catch (cause) {
+      const error = cause instanceof AppError
+        ? cause
+        : controller.signal.aborted && !signal?.aborted
+          ? new AppError(ERROR_CODES.DEPENDENCY_UNAVAILABLE, 503, undefined, { operation: 'andromeda_timeout' }, { cause })
+          : dependencyError('andromeda_compare_transport', cause);
+      if (!(cause instanceof AppError)) {
+        this.options.logger?.warn({
+          operation: 'andromeda_compare_summary',
           errorCode: error.code,
           durationMs: Math.max(0, this.now() - started),
         });

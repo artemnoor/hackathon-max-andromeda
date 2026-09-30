@@ -77,8 +77,15 @@ test('Mini App host verifies header initData and serves only bounded static/heal
   assert.match(shell.headers.get('content-type') ?? '', /^text\/html/u);
   assert.equal(shell.headers.get('x-frame-options'), null);
   assert.match(shell.headers.get('content-security-policy') ?? '', /frame-ancestors https:\/\/max\.ru https:\/\/web\.max\.ru/u);
-  assert.match(await shell.text(), /Andromeda в MAX/u);
-  assert.equal((await fetch(`${origin}/styles.css`)).headers.get('content-type'), 'text/css; charset=utf-8');
+  const html = await shell.text();
+  assert.match(html, /Andromeda — выбор программы/u);
+  const cssAsset = /href="(\/assets\/[A-Za-z0-9._-]+\.css)"/u.exec(html)?.[1];
+  const jsAsset = /src="(\/assets\/[A-Za-z0-9._-]+\.js)"/u.exec(html)?.[1];
+  assert.ok(cssAsset);
+  assert.ok(jsAsset);
+  assert.equal((await fetch(`${origin}${cssAsset}`)).headers.get('content-type'), 'text/css; charset=utf-8');
+  assert.equal((await fetch(`${origin}${jsAsset}`)).headers.get('content-type'), 'text/javascript; charset=utf-8');
+  assert.equal((await fetch(`${origin}/styles.css`)).status, 404);
   assert.equal((await fetch(`${origin}/app.js.map`)).status, 404);
   assert.equal((await fetch(`${origin}/.env`)).status, 404);
   const traversal = await fetch(`${origin}/%2e%2e/.env`);
@@ -89,4 +96,40 @@ test('Mini App host verifies header initData and serves only bounded static/heal
   const combinedLog = logLines.join('\n');
   assert.equal(combinedLog.includes(signed), false);
   assert.equal(combinedLog.includes('42424242'), false);
+});
+
+test('Mini App exposes source-backed read-only catalog outside MAX and keeps personal routes authenticated', async (t) => {
+  const port = await availablePort();
+  const origin = `http://127.0.0.1:${port}`;
+  const upstream: string[] = [];
+  const config = loadConfig({
+    NODE_ENV: 'test', MAX_BOT_TOKEN: TEST_BOT_TOKEN,
+    MAX_INIT_DATA_TTL_SECONDS: '900', MINI_APP_PORT: String(port), MINI_APP_ORIGINS: origin,
+  });
+  const server = createMiniAppServer(buildMiniAppHandler({
+    config,
+    logger: createLogger({ sink: () => undefined }),
+    nowSeconds: () => 1_700_000_100,
+    publicApiBaseUrl: 'http://127.0.0.1:8123',
+    fetcher: async (input, init) => {
+      upstream.push(String(input));
+      assert.equal(new Headers(init?.headers).has('x-max-init-data'), false);
+      return Response.json({ items: [] });
+    },
+  }), port, '127.0.0.1');
+  await server.start();
+  t.after(() => server.stop());
+  const signed = createSignedInitData({ authDate: 1_700_000_000, userId: 42424242 });
+  const path = `${origin}/api/max/catalog/programs`;
+  const response = await fetch(path);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { items: [] });
+  assert.deepEqual(upstream, ['http://127.0.0.1:8123/api/v1/programs']);
+  assert.equal((await fetch(`${origin}/api/max/data/profile`)).status, 401);
+  assert.equal((await fetch(`${origin}/api/max/data/profile`, { headers: { 'X-Max-Init-Data': 'invalid' } })).status, 401);
+  assert.equal((await fetch(`${origin}/api/max/data/profile`, { headers: { 'X-Max-Init-Data': signed } })).status, 200);
+  assert.equal((await fetch(`${path}?unexpected=1`, { headers: { 'X-Max-Init-Data': signed } })).status, 400);
+  assert.equal((await fetch(`${origin}/api/max/catalog/programs/not-a-program`, { headers: { 'X-Max-Init-Data': signed } })).status, 400);
+  assert.equal((await fetch(`${origin}/api/max/catalog/compare?programIds=one,two`, { headers: { 'X-Max-Init-Data': signed } })).status, 400);
+  assert.equal(upstream.length, 2);
 });

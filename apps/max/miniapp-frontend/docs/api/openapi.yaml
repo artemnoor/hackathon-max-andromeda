@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Andromeda Admissions API
+  version: 1.0.0
+  description: >-
+    Backend integration contract for the Andromeda applicant workspace. Records should
+    include provenance and freshness metadata. Never return an admission probability
+    unless a separately validated model and its limitations are supplied.
+servers:
+  - url: https://api.example.edu/v1
+    description: Replace with the backend base URL; frontend uses VITE_API_BASE_URL.
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+paths:
+  /programs:
+    get:
+      summary: Search and filter programs
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: area, in: query, schema: { type: string } }
+        - { name: university, in: query, schema: { type: string } }
+        - { name: exam, in: query, schema: { type: string } }
+        - { name: format, in: query, schema: { type: string } }
+        - { name: durationYears, in: query, schema: { type: integer } }
+        - { name: minScore, in: query, schema: { type: integer } }
+        - { name: maxCost, in: query, schema: { type: integer } }
+        - { name: budget, in: query, schema: { type: string, enum: [all, budget, paid] } }
+        - { name: benefits, in: query, schema: { type: string, enum: [any, available, unavailable, unknown] } }
+        - { name: vuc, in: query, schema: { type: string, enum: [any, yes, no, unknown] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Page of programs, content: { application/json: { schema: { $ref: '#/components/schemas/ProgramPage' } } } }
+  /programs/{programId}:
+    get:
+      summary: Program details including curriculum and admission rules
+      parameters: [{ name: programId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Program, content: { application/json: { schema: { $ref: '#/components/schemas/Program' } } } }
+  /admission/evaluate:
+    post:
+      summary: Evaluate a set of programs and a what-if scenario
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AdmissionEvaluationRequest' } } }
+      responses:
+        '200': { description: Rule-by-rule evaluation, content: { application/json: { schema: { type: object, properties: { results: { type: array, items: { type: object } }, provenance: { $ref: '#/components/schemas/Provenance' } } } } }
+  /recommendations:
+    get:
+      summary: Explain program fit against the supplied profile
+      parameters: [{ name: profileId, in: query, schema: { type: string } }]
+      responses:
+        '200': { description: Recommendations with criterion matches and explanations, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/RecommendationItem' } }, provenance: { $ref: '#/components/schemas/Provenance' } } } } } }
+  /profile:
+    get:
+      summary: Read applicant profile
+      parameters: [{ name: profileId, in: query, schema: { type: string } }]
+      responses: { '200': { description: Profile with exam status, preferences and notifications, content: { application/json: { schema: { $ref: '#/components/schemas/ApplicantProfile' } } } }
+    patch:
+      summary: Update applicant profile
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProfilePatch' } } } }
+      responses: { '200': { description: Updated profile, content: { application/json: { schema: { $ref: '#/components/schemas/ApplicantProfile' } } } }
+  /profile/notifications:
+    patch:
+      summary: Update MAX notification preferences
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { channel: { type: string, enum: [max] }, enabled: { type: boolean }, topics: { type: array, items: { type: string } } }, required: [channel, enabled] } } }
+      responses: { '200': { description: Persisted notification settings and connection status } }
+  /rules:
+    get:
+      summary: Current rule records with publication/effective dates and impacted programs
+      parameters: [{ name: university, in: query, schema: { type: string } }, { name: year, in: query, schema: { type: integer } }, { name: status, in: query, schema: { type: string } }]
+      responses: { '200': { description: Rules with citations and applicability, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/RuleRecord' } } } } } } }
+  /news:
+    get:
+      summary: Admissions news records
+      parameters: [{ name: status, in: query, schema: { type: string } }, { name: since, in: query, schema: { type: string, format: date } }]
+      responses: { '200': { description: News with status, source, publication date and effective period, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/NewsRecord' } } } } } } }
+  /exports/comparison:
+    post:
+      summary: Generate a dated comparison export
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { programIds: { type: array, items: { type: string }, minItems: 2, maxItems: 4 }, criteria: { type: array, items: { type: string } }, locale: { type: string } }, required: [programIds] } } }
+      responses: { '200': { description: Export metadata or a signed downloadable file URL } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+    cookieAuth: { type: apiKey, in: cookie, name: andromeda_session }
+  schemas:
+    Provenance:
+      type: object
+      properties:
+        status: { type: string, enum: [official, verified, demo, stale, unknown] }
+        sourceTitle: { type: [string, 'null'] }
+        sourceUrl: { type: [string, 'null'], format: uri }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        effectiveFrom: { type: [string, 'null'], format: date }
+        effectiveTo: { type: [string, 'null'], format: date }
+        checkedAt: { type: [string, 'null'], format: date-time }
+    ProgramPage:
+      type: object
+      properties: { items: { type: array, items: { $ref: '#/components/schemas/Program' } }, page: { type: integer }, total: { type: integer } }
+    Program:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        title: { type: string }
+        university: { type: string }
+        dept: { type: [string, 'null'] }
+        areas: { type: array, items: { type: string } }
+        description: { type: string }
+        exams: { type: array, items: { type: object, properties: { subjectId: { type: string }, subjectLabel: { type: string }, required: { type: boolean }, minimumScore: { type: [integer, 'null'] } } } }
+        passing: { type: [integer, 'null'], description: Historical comparison value; include its year and provenance before it can be treated as current. }
+        budget: { type: [integer, 'null'] }
+        cost: { type: [integer, 'null'] }
+        format: { type: [string, 'null'] }
+        durationYears: { type: [integer, 'null'] }
+        degree: { type: [string, 'null'] }
+        vuc: { type: string, enum: [yes, no, unknown] }
+        benefits: { type: string, enum: [available, unavailable, unknown] }
+        curriculum: { type: array, items: { type: object, properties: { courseName: { type: string }, area: { type: string }, semester: { type: [integer, 'null'] }, hours: { type: [integer, 'null'] }, assessment: { type: [string, 'null'] }, mandatory: { type: [boolean, 'null'] } } } }
+        admissionRules: { type: array, items: { type: object } }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+    ExamResult:
+      type: object
+      properties:
+        subjectId: { type: string }
+        status: { type: string, enum: [taken, expected, range, not-taken] }
+        score: { type: [integer, 'null'], minimum: 0, maximum: 100 }
+        minScore: { type: [integer, 'null'], minimum: 0, maximum: 100 }
+        maxScore: { type: [integer, 'null'], minimum: 0, maximum: 100 }
+    AdmissionEvaluationRequest:
+      type: object
+      properties:
+        programIds: { type: array, items: { type: string }, minItems: 1 }
+        exams: { type: array, items: { $ref: '#/components/schemas/ExamResult' } }
+        scenario:
+          type: object
+          properties:
+            extraPoints: { type: integer, minimum: 0, maximum: 100 }
+            bvi: { type: boolean }
+            benefitIds: { type: array, items: { type: string } }
+            olympiadIds: { type: array, items: { type: string } }
+            olympiadResults: { type: array, items: { type: object, properties: { number: { type: [integer, 'null'] }, profile: { type: string }, award: { type: string, enum: [winner, prize, participant] } } } }
+            paidTrack: { type: boolean }
+        admissionYear: { type: integer }
+    ProfilePatch:
+      type: object
+      properties:
+        profileId: { type: string }
+        name: { type: string, maxLength: 80 }
+        admissionYear: { type: integer }
+        extraPoints: { type: integer, minimum: 0, maximum: 100 }
+        exams: { type: array, items: { $ref: '#/components/schemas/ExamResult' } }
+        interests: { type: object, additionalProperties: { type: number } }
+        preferences: { type: object }
+        maxNotifications: { type: object, properties: { enabled: { type: boolean }, topics: { type: array, items: { type: string } } } }
+    ApplicantProfile:
+      type: object
+      properties:
+        profileId: { type: string }
+        name: { type: string }
+        admissionYear: { type: integer }
+        extraPoints: { type: integer, minimum: 0, maximum: 100 }
+        exams: { type: array, items: { $ref: '#/components/schemas/ExamResult' } }
+        interests: { type: object, additionalProperties: { type: number } }
+        preferences: { type: object }
+        maxNotifications: { type: object, properties: { enabled: { type: boolean }, topics: { type: array, items: { type: string } }, connectionStatus: { type: string } } }
+    RecommendationItem:
+      type: object
+      properties:
+        programId: { type: string }
+        percent: { type: integer, minimum: 0, maximum: 100, description: Percentage of explicitly answered criteria matched, not admission probability. }
+        matchedCriteria: { type: integer }
+        totalCriteria: { type: integer }
+        reasons: { type: array, items: { type: string } }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+    RuleRecord:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        status: { type: string, enum: [draft, announced, published, effective, superseded, unknown] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        effectiveFrom: { type: [string, 'null'], format: date }
+        effectiveTo: { type: [string, 'null'], format: date }
+        appliesTo: { type: array, items: { type: string } }
+        impact: { type: string }
+        sourceTitle: { type: string }
+        sourceUrl: { type: [string, 'null'], format: uri }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+    NewsRecord:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        status: { type: string }
+        publishedAt: { type: string, format: date-time }
+        effectiveFrom: { type: [string, 'null'], format: date }
+        sourceTitle: { type: string }
+        sourceUrl: { type: string, format: uri }
+        provenance: { $ref: '#/components/schemas/Provenance' }

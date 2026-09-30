@@ -180,6 +180,33 @@ def test_naturalizer_accepts_only_typed_source_backed_sections() -> None:
     assert response.model_dump(mode="json") == original
 
 
+def test_ordinary_response_text_uses_one_bounded_section_and_fails_closed() -> None:
+    naturalizer = _EchoNaturalizer(lambda _section: "Результатов найдено: 3")
+    renderer = KnowledgeResponseRenderer(naturalizer=naturalizer)
+
+    rendered = renderer.naturalize_text(
+        "Найдено результатов: 3",
+        rate_limit_key="opaque-owner",
+    )
+
+    assert rendered.response_mode is ResponseMode.SOURCE_BACKED_VERBALIZATION
+    assert rendered.text == "Результатов найдено: 3"
+    assert naturalizer.request is not None
+    assert len(naturalizer.request.sections) == 1
+    assert naturalizer.request.sections[0].text == "Найдено результатов: 3"
+    assert naturalizer.request.allowed_references == ()
+
+    untrusted = KnowledgeResponseRenderer(
+        naturalizer=_EchoNaturalizer(lambda section: section.text + " 4")
+    ).naturalize_text("Найдено результатов: 3", rate_limit_key="opaque-owner")
+    assert untrusted.response_mode is ResponseMode.DETERMINISTIC
+    assert untrusted.text == "Найдено результатов: 3"
+
+    too_long = renderer.naturalize_text("x" * 4_001, rate_limit_key="opaque-owner")
+    assert too_long.response_mode is ResponseMode.DETERMINISTIC
+    assert too_long.text == "x" * 4_001
+
+
 @pytest.mark.parametrize(
     "mutate",
     [

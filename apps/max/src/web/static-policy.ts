@@ -4,6 +4,7 @@ export const miniAppContentSecurityPolicy = (): string => [
   "default-src 'self'",
   "script-src 'self' https://st.max.ru",
   "style-src 'self'",
+  "style-src-attr 'unsafe-inline'",
   "connect-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",

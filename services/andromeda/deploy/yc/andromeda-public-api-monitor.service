@@ -1,0 +1,16 @@
+[Unit]
+Description=Check public Andromeda API and OpenAPI over HTTPS
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=andromeda
+Group=andromeda
+Environment=PUBLIC_API_BASE_URL=https://max.code-slicer.ru
+ExecStart=/usr/bin/python3 /opt/andromeda/public-api-monitor.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

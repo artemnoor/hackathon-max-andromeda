@@ -3,6 +3,6 @@
   "formatVersion": 1,
   "generationCommand": "npm --prefix apps/max run generate:andromeda-client",
   "generator": "openapi-typescript@7.13.0",
-  "openapiSha256": "bbe2b49661d13fcadbb9849009c02c6493dce40e62961613fd0a8da3fe1ec70e",
+  "openapiSha256": "90a3b5fd6281a37b2b09a655768c572bd5ec0a1b2904bd0e96f03bf27224e2cb",
   "upstreamAndromedaCommit": "e8118b611220320f17ab60e936455680441e004d"
 }

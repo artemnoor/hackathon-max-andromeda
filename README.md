@@ -1,26 +1,140 @@
-# Andromeda MAX Hackathon Monorepo
+# Andromeda — каталог и помощник по поступлению
 
-Единый standalone repository для MAX-хакатона: MAX transport живёт в `apps/max`, Andromeda — в `services/andromeda`. MAX обращается к backend только по HTTP через Public API v1 и использует сгенерированный из canonical OpenAPI контракт. Совместное хранение в Git не создаёт прямой import-зависимости между TypeScript transport и Python backend.
+Andromeda помогает изучать опубликованные программы и учебные планы, сравнивать направления и разбираться в условиях приёма. Открыть каталог можно в MAX Mini App; вопросы можно задавать MAX-боту обычным текстом.
 
-```text
-MAX Bot ───────┐
-MAX Mini App ──┼── HTTP / Public API v1 ── Andromeda modular monolith
-Web ───────────┘                              ├── PostgreSQL
-                                              ├── deterministic domain services
-                                              └── bounded Jev / optional presentation
+## Готовность и воспроизводимость
+
+- **Материалы соответствуют версии решения:** код, контракты API, Docker Compose и инструкции хранятся вместе; точную версию фиксирует Git commit (`git rev-parse HEAD`).
+- **Запуск воспроизводим:** локальный стек описан одной командой Docker Compose после заполнения `.env`.
+- **Описаны архитектура, зависимости, окружение и интеграции:** см. разделы ниже и документацию компонентов.
+- **Есть проверяемый основной сценарий:** запуск бота → `/start` → пример сравнения → ответ и PDF со сравнением.
+- **Ограничения зафиксированы:** показываются только данные каталога и опубликованных источников; покрытие зависит от наполнения и доступности данных, а ответы ИИ не заменяют расчёты backend.
+
+## Содержание
+
+- [Возможности](#возможности)
+- [Архитектура](#архитектура)
+- [Быстрый запуск через Docker](#быстрый-запуск-через-docker)
+- [Настройка MAX и ИИ](#настройка-max-и-ии)
+- [Проверка основного сценария](#проверка-основного-сценария)
+- [Проверка API и Mini App](#проверка-api-и-mini-app)
+- [Разработка и тесты](#разработка-и-тесты)
+- [Ограничения](#ограничения)
+- [Структура и документация](#структура-и-документация)
+- [Лицензии](#лицензии)
+
+## Возможности
+
+- каталог опубликованных образовательных программ;
+- просмотр доступных дисциплин, учебных планов и условий приёма;
+- сравнение программ по учебным планам с отправкой PDF в чат;
+- диалог с уточнениями: можно отвечать обычным текстом;
+- Mini App с переходами к источникам опубликованных данных;
+- backend API с OpenAPI-контрактом.
+
+Mini App показывает только поверхности, для которых есть реальные API-данные. Неподключённые пользовательские функции не заполняются демонстрационными записями.
+
+![Сравнение программ и опубликованных дисциплин](docs/images/andromeda-miniapp-comparison.png)
+
+## Архитектура
+
+```mermaid
+flowchart LR
+  User[Пользователь MAX] --> Bot[MAX Bot]
+  User --> Mini[Mini App]
+  Bot -->|Public API v1| API[Andromeda API]
+  Mini -->|HTTPS / same-origin proxy| API
+  API --> Domain[Детерминированные доменные сервисы]
+  API --> DB[(PostgreSQL)]
+  API -. необязательная интерпретация текста .-> AI[Polza / DeepSeek]
+  Bot --> Redis[(Redis: сессии транспорта)]
 ```
 
-## Repository layout
+MAX-адаптер обращается к backend через HTTP Public API v1. Решения и вычисления принадлежат backend; провайдер ИИ может помочь разобрать формулировку, но не создаёт учебные планы, источники или результаты. Спецификация API: [`services/andromeda/openapi.json`](services/andromeda/openapi.json).
 
-- [`apps/max/`](apps/max/): MAX Bot, Mini App shell, transport state, tests and generated Public API client.
-- [`services/andromeda/`](services/andromeda/): Python backend, PostgreSQL model/migrations, Web app, ingestion, canonical OpenAPI and DATA-API assets.
-- [`UPSTREAM_ANDROMEDA.md`](UPSTREAM_ANDROMEDA.md): imported source SHA and reviewed snapshot-sync procedure.
+## Быстрый запуск через Docker
 
-MAX must not import Andromeda Python, database, Jev or provider internals. Backend business behavior remains behind `/api/v1/*`; MAX platform identifiers are not Andromeda identities or authorization.
+### Требования
 
-## Local development
+- Docker Desktop или Docker Engine с Docker Compose v2;
+- токен MAX-бота, выданный для вашего бота;
+- доступ к реестрам контейнеров при первой сборке (образы Node.js и Python скачиваются автоматически).
 
-See [`apps/max/docs/development.md`](apps/max/docs/development.md) for MAX setup and [`services/andromeda/README.md`](services/andromeda/README.md) for backend prerequisites and fixture-backed operation. From the repository root, use:
+### 1. Получите проект и создайте локальное окружение
+
+```powershell
+git clone https://github.com/artemnoor/hackathon-max-andromeda.git
+cd hackathon-max-andromeda
+Copy-Item .env.example .env
+notepad .env
+```
+
+В `.env` задайте `MAX_BOT_TOKEN` значением токена вашего бота. Не отправляйте токен в чат, GitHub или коммиты. Инструкция по настройке других интеграций приведена ниже.
+
+### 2. Соберите и запустите весь стек
+
+Из корня репозитория выполните одну команду:
+
+```powershell
+docker compose --profile max up --build --wait
+```
+
+Compose поднимет PostgreSQL, заполнит его fixture-данными для локального запуска, запустит Andromeda API, Redis, MAX-бота и Mini App. При первом запуске Docker должен скачать базовые образы и собрать приложения; время зависит от сети.
+
+Проверить сервисы можно командой:
+
+```powershell
+docker compose --profile max ps
+```
+
+Mini App откроется на <http://127.0.0.1:8787/>. Локальный API доступен на <http://127.0.0.1:8020/>; проверка готовности — `/health/ready`, схема — `/openapi.json`.
+
+Остановить приложения, сохранив локальную базу и кэш:
+
+```powershell
+docker compose --profile max down
+```
+
+Чтобы также удалить сохранённые локальные данные, используйте `docker compose --profile max down --volumes`.
+
+## Настройка MAX и ИИ
+
+Все значения вводятся в корневой файл `.env`, созданный из `.env.example`.
+
+| Переменная | Обязательна | Где получить / что указать |
+|---|:---:|---|
+| `MAX_BOT_TOKEN` | Да, для бота | Токен MAX-бота. Сохраните его только в локальном `.env` или хранилище секретов хостинга. |
+| `POLZA_AI_API_KEY` | Нет | Ключ Polza AI. Без него остаётся детерминированная обработка backend. |
+| `PRESENTATION_LLM_ENABLED` | Нет | В `.env.example` включена обработка естественного языка; без ключа провайдера backend использует fallback. |
+| `MINI_APP_PUBLIC_URL` | Для внешнего MAX Mini App | Публичный HTTPS-адрес Mini App; локальный `127.0.0.1` MAX-клиентам недоступен. |
+| `MINI_APP_ORIGINS` | Для внешнего запуска | Точные разрешённые origin, включая origin публичного Mini App. Не используйте `*`. |
+| `ANDROMEDA_HOST_PORT` | Нет | Локальный порт API; по умолчанию `8020`. |
+| `MINI_APP_PORT` | Нет | Локальный порт Mini App; по умолчанию `8787`. |
+
+Для реального открытия Mini App из MAX настройте публичный HTTPS ingress, укажите тот же origin в `MINI_APP_PUBLIC_URL` и `MINI_APP_ORIGINS`. Docker Compose — локальный стек, не production-публикация. Развёртывание в Yandex Cloud описано в [`services/andromeda/deploy/yc/README.md`](services/andromeda/deploy/yc/README.md) и [`apps/max/docs/deployment.md`](apps/max/docs/deployment.md).
+
+## Проверка основного сценария
+
+1. Запустите стек и убедитесь, что `docker compose --profile max ps` показывает работающие сервисы.
+2. Откройте чат с вашим MAX-ботом и отправьте `/start`.
+3. Нажмите предложенный пример сравнения ИУ5 и ИУ7 либо отправьте его текстом.
+4. Дождитесь ответа с названиями сравниваемых программ и PDF-файла сравнения.
+5. Откройте PDF и проверьте, что таблица и источники относятся к выбранным программам.
+
+Ожидаемый результат: бот обрабатывает пример как запрос на сравнение, возвращает фактические поля учебных планов из API и прикладывает PDF. Если нужной программы или источника нет в каталоге, бот должен сообщить о нехватке данных, а не додумывать значения.
+
+## Проверка API и Mini App
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8020/health/ready
+Invoke-RestMethod http://127.0.0.1:8020/api/v1/programs
+```
+
+Для разработки Mini App откройте <http://127.0.0.1:8787/>. Запуск и проверка каталога в MAX требуют корректных подписанных launch-данных MAX; простое открытие локального адреса не имитирует вход из MAX.
+
+## Разработка и тесты
+
+Локальные проверки без Docker:
 
 ```powershell
 python scripts/monorepo.py max
@@ -30,14 +144,29 @@ python scripts/monorepo.py full
 python scripts/monorepo.py e2e
 ```
 
-Copy the root `.env.example` to `.env` for local Compose overrides. Start the fixture-backed PostgreSQL, Redis and Andromeda API with `python scripts/monorepo.py stack up --fixtures`. Add `--max` after setting `MAX_BOT_TOKEN` to start the real MAX Bot and Mini App profile. `python scripts/monorepo.py stack down` preserves database/cache volumes; pass `--volumes` only when you explicitly want to erase this local state. `full` validates Compose without starting services or requiring provider credentials.
+`e2e` использует изолированный fixture-стек и не обращается к MAX или платным AI-провайдерам. Настройка тестов и описание проверок: [`docs/development.md`](docs/development.md), [`apps/max/docs/development.md`](apps/max/docs/development.md), [`services/andromeda/docs/testing.md`](services/andromeda/docs/testing.md). Сводка ручной проверки бота: [`docs/qa/max-bot-live-verification-2026-09-30.md`](docs/qa/max-bot-live-verification-2026-09-30.md).
 
-`python scripts/monorepo.py e2e` creates a disposable, uniquely named Compose project with fixture-seeded PostgreSQL, Redis and Andromeda, runs the MAX-to-Public-API HTTP/session integration suite plus the Andromeda and MAX browser checks, then removes only that E2E project's containers and temporary volumes. Docker Engine must be running. The six assistant scenarios use deterministic fixtures and do not call Jev, DeepSeek, MAX or university sites.
+## Ограничения
 
-Use fixture-backed data for deterministic local checks. Live university sources and paid AI providers are optional and are not substitutes for the deterministic test suite. Never commit `.env` files, tokens, cookies, MAX update payloads or applicant profiles.
+- Полнота каталога зависит от опубликованных и загруженных источников. Пропуск дисциплины в источнике не означает, что такой дисциплины нет в реальной программе.
+- Fixture-данные нужны для воспроизводимой локальной разработки и не подтверждают покрытие всех вузов и годов.
+- Внешний AI-провайдер необязателен и может быть недоступен или отвечать с задержкой; backend должен использовать детерминированный fallback.
+- Результат поступления не является гарантией зачисления. Ответ ограничен данными и правилами, доступными системе.
+- Локальный MAX webhook/polling и Mini App не подтверждают доступность production-домена или платформы MAX.
+- Docker Compose валидируется локально; успешная сборка требует доступного Docker Hub и корректной сетевой конфигурации.
 
-## API contracts and licenses
+## Структура и документация
 
-The canonical Public API v1 contract is [`services/andromeda/openapi.json`](services/andromeda/openapi.json). MAX DTOs are generated from that file; update the backend export, generated client and drift evidence together. Internal `/ops` and review APIs are not MAX contracts. The MAX and Andromeda source trees retain their respective license notices in their package roots.
+| Путь | Назначение |
+|---|---|
+| [`apps/max/`](apps/max/) | MAX Bot, Mini App, HTTP-клиент Public API и MAX-адаптеры |
+| [`services/andromeda/backend/`](services/andromeda/backend/) | API, доменные сервисы, хранилища и ingestion |
+| [`services/andromeda/openapi.json`](services/andromeda/openapi.json) | Канонический публичный API-контракт |
+| [`compose.yaml`](compose.yaml) | Единый локальный стек Docker Compose |
+| [`docs/architecture.md`](docs/architecture.md) | Архитектурные границы и поток данных |
+| [`docs/development.md`](docs/development.md) | Разработка, проверки и контракты |
+| [`docs/qa/`](docs/qa/) | Сценарии приёмки и наблюдаемые результаты проверки |
 
-See [`docs/architecture.md`](docs/architecture.md) for module and transport ownership and [`docs/development.md`](docs/development.md) for environment setup, fixture E2E, contract generation and verification commands.
+## Лицензии
+
+Лицензионные уведомления сохранены в каталогах соответствующих компонентов. Включённые шрифты Noto Sans сопровождаются лицензией в `apps/max/assets/fonts/OFL-Noto-Sans.txt`.

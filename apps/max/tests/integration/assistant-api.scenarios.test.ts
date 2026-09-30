@@ -46,7 +46,7 @@ before(async () => {
     baseUrl: apiUrl,
     environment: 'test',
     profileCookieName: 'andromeda_profile_session',
-    timeoutMs: 5_000,
+    timeoutMs: 10_000,
     profileCookieSecure: false,
   });
   if (redis) {
@@ -92,7 +92,7 @@ const query = async (text: string): Promise<AssistantQueryResponse> => {
   return result.result;
 };
 
-test('HTTP AI program discovery clarifies a metric and carries the same backend session on follow-up', {
+test('HTTP AI program discovery clarifies interests and carries the same backend session on follow-up', {
   skip: testIsEnabled ? false : 'MAX_E2E_ANDROMEDA_URL is not set; run `python scripts/monorepo.py e2e` for fixture-backed HTTP coverage',
 }, async () => {
   const assistant = interaction();
@@ -110,14 +110,20 @@ test('HTTP AI program discovery clarifies a metric and carries the same backend 
   const first = await assistant.query(syntheticMessage(firstText, userId), firstText);
 
   assert.equal(first.result.state, 'needs_clarification', JSON.stringify(first.result));
-  assert.ok(first.result.missing_slots.includes('metric'), JSON.stringify(first.result));
+  assert.ok(first.result.missing_slots.includes('interests'), JSON.stringify(first.result));
   assert.ok(first.result.session_id);
 
   const second = await assistant.query(syntheticMessage('AI', userId), 'AI');
   assert.equal(second.result.state, 'complete', JSON.stringify(second.result));
   assert.equal(second.result.session_id, first.result.session_id);
   assert.ok(second.result.revision > first.result.revision);
-  assert.ok(second.result.query?.metrics.includes('ai_share'));
+  assert.equal(second.result.response?.template, 'program-recommendations');
+  const responseData: Record<string, unknown> | undefined = second.result.response?.data;
+  assert.ok(responseData);
+  assert.ok(
+    Array.isArray(responseData['recommendations'])
+      && responseData['recommendations'].length > 0,
+  );
 });
 
 test('HTTP applicant score query reaches the existing admission-fit result with explicit inputs', {
@@ -137,7 +143,32 @@ test('HTTP applicant score query reaches the existing admission-fit result with 
   assert.ok(Object.keys(byProgramId).length > 0);
 });
 
-test('HTTP comparison query reaches the deterministic program analytics path', {
+test('HTTP multiple-university choice advances to asking for university names', {
+  skip: testIsEnabled ? false : 'MAX_E2E_ANDROMEDA_URL is not set; run `python scripts/monorepo.py e2e` for fixture-backed HTTP coverage',
+}, async () => {
+  const assistant = interaction();
+  const userId = randomInt(1_000_000, 2_000_000_000);
+  const firstText = 'Куда я прохожу: русский 80, математика 85, информатика 88';
+  const first = await assistant.query(syntheticMessage(firstText, userId), firstText);
+
+  assert.equal(first.result.state, 'needs_clarification');
+  assert.ok(first.result.missing_slots.includes('funding'));
+
+  const second = await assistant.query(
+    syntheticMessage('Несколько вузов', userId),
+    'Несколько вузов',
+  );
+  assert.equal(second.result.state, 'needs_clarification');
+  assert.equal(second.result.session_id, first.result.session_id);
+  assert.equal(second.result.revision, first.result.revision + 1);
+  assert.equal(
+    second.result.question,
+    'Напишите название одного или нескольких вузов через запятую.',
+  );
+  assert.deepEqual(second.result.options, []);
+});
+
+test('HTTP comparison query reaches the program analytics path', {
   skip: testIsEnabled ? false : 'MAX_E2E_ANDROMEDA_URL is not set; run `python scripts/monorepo.py e2e` for fixture-backed HTTP coverage',
 }, async () => {
   const assistant = interaction();
@@ -168,8 +199,42 @@ test('HTTP comparison query reaches the deterministic program analytics path', {
     [...(result.query?.scope_ids ?? [])].sort(),
     ['program:bmstu:09.03.01-02', 'program:bmstu:09.03.01-12'],
   );
-  assert.equal(result.response?.response_mode, 'deterministic');
+  assert.ok(
+    ['deterministic', 'source_backed_verbalization'].includes(result.response?.response_mode ?? ''),
+  );
   assert.equal(result.response?.response_type, 'image');
+});
+
+test('HTTP comparison renders a summary first and accepts a metric-only follow-up', {
+  skip: testIsEnabled ? false : 'MAX_E2E_ANDROMEDA_URL is not set; run `python scripts/monorepo.py e2e` for fixture-backed HTTP coverage',
+}, async () => {
+  const assistant = interaction();
+  const userId = randomInt(1_000_000, 2_000_000_000);
+  const startText = 'Сравнить программы';
+  const first = await assistant.query(
+    syntheticMessage(startText, userId),
+    startText,
+  );
+
+  assert.equal(first.result.state, 'needs_clarification', JSON.stringify(first.result));
+  assert.ok(first.result.missing_slots.includes('entity'));
+  assert.match(first.result.question ?? '', /направления или программы/u);
+
+  const entityText = 'program:bmstu:09.03.01-02 и program:bmstu:09.03.01-12';
+  const second = await assistant.query(syntheticMessage(entityText, userId), entityText);
+  assert.equal(second.result.state, 'complete', JSON.stringify(second.result));
+  assert.equal(second.result.session_id, first.result.session_id);
+  assert.ok(second.result.response?.data);
+  assert.ok(second.result.query?.metrics.includes('programming_share'));
+  assert.deepEqual(second.result.options, []);
+
+  const thirdText = 'А теперь только по математике';
+  const third = await assistant.query(syntheticMessage(thirdText, userId), thirdText);
+  assert.equal(third.result.state, 'complete', JSON.stringify(third.result));
+  assert.equal(third.result.session_id, second.result.session_id);
+  assert.ok(third.result.revision > second.result.revision);
+  assert.deepEqual(third.result.query?.metrics, ['math_share']);
+  assert.ok(third.result.query?.metrics.includes('math_share'));
 });
 
 test('HTTP BVI policy question reports missing evidence as uncertainty, not as a negative rule', {

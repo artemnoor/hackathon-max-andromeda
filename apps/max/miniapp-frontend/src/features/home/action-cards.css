@@ -1,0 +1,317 @@
+.home-actions .action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.home-actions .action-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  min-height: 388px;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 0;
+  border: 1.35px solid rgba(207, 212, 211, .52);
+  border-radius: 31px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .008), transparent), rgba(14, 15, 15, .94);
+  box-shadow: none;
+  color: #f4f5f4;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.home-actions .action-card::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, .18) 0 .7px, transparent .8px);
+  background-size: 4px 4px;
+  content: "";
+  opacity: .14;
+  pointer-events: none;
+}
+
+.home-actions .action-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(207, 212, 211, .8);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent), #111313;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .24);
+}
+
+.home-actions .action-card:active { transform: translateY(0); }
+
+.home-actions .action-card:focus-visible {
+  outline: 2px solid #b5c8d2;
+  outline-offset: 4px;
+}
+
+.home-actions .feature-number {
+  position: absolute;
+  z-index: 5;
+  top: 34px;
+  left: 43px;
+  color: #9a9d9f;
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: -.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-actions .action-copy {
+  position: absolute;
+  z-index: 5;
+  right: 108px;
+  bottom: 45px;
+  left: 43px;
+  display: block;
+  margin: 0;
+}
+
+.home-actions .action-copy strong {
+  display: block;
+  margin: 0 0 20px;
+  color: #f4f5f4;
+  font-size: clamp(28px, 2.8vw, 39px);
+  font-weight: 780;
+  letter-spacing: -.037em;
+  line-height: 1.02;
+}
+
+.home-actions .action-copy > span {
+  display: block;
+  max-width: 34ch;
+  color: #8b8f92;
+  font-size: clamp(18px, 2vw, 28px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1.12;
+}
+
+.home-actions .action-arrow {
+  position: absolute;
+  z-index: 6;
+  right: 42px;
+  bottom: 36px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #e9eceb;
+  font-size: 45px;
+  font-weight: 200;
+  line-height: 1;
+  transform: translateY(-1px);
+  transition: transform 220ms ease, color 220ms ease;
+}
+
+.home-actions .action-arrow::before {
+  content: "→";
+  font-family: Arial, sans-serif;
+  font-weight: 200;
+}
+
+.home-actions .action-card:hover .action-arrow {
+  color: #f4f5f4;
+  transform: translate(3px, -1px);
+}
+
+.home-actions .grid {
+  position: absolute;
+  z-index: 1;
+  border: 1px solid rgba(0, 173, 118, .3);
+  background-image:
+    linear-gradient(rgba(0, 173, 118, .105) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 173, 118, .105) 1px, transparent 1px);
+  background-size: 9px 9px;
+  box-shadow: inset 0 0 0 1px rgba(0, 173, 118, .035);
+  opacity: .72;
+  pointer-events: none;
+}
+
+.home-actions .grid::after {
+  position: absolute;
+  inset: -1px;
+  background-image: radial-gradient(circle, rgba(0, 200, 138, .72) 0 1.1px, transparent 1.2px);
+  background-size: 9px 9px;
+  content: "";
+  opacity: .2;
+}
+
+.home-actions .cross,
+.home-actions .cross::before {
+  position: absolute;
+  z-index: 2;
+  background: rgba(0, 173, 118, .32);
+  content: "";
+  pointer-events: none;
+}
+
+.home-actions .cross {
+  width: 30px;
+  height: 1px;
+}
+
+.home-actions .cross::before {
+  top: -14px;
+  left: 15px;
+  width: 1px;
+  height: 29px;
+}
+
+.home-actions .action-card.c1 .grid { top: 80px; right: 210px; width: 116px; height: 152px; }
+.home-actions .action-card.c1 .cross { top: 70px; right: 137px; opacity: .42; }
+
+.home-actions .action-card.c2 .grid { top: 78px; right: 191px; width: 130px; height: 146px; }
+.home-actions .action-card.c2 .orbit {
+  position: absolute;
+  z-index: 1;
+  top: 41px;
+  right: 65px;
+  width: 206px;
+  height: 206px;
+  border: 1px solid rgba(0, 173, 118, .3);
+  border-right-color: rgba(0, 173, 118, .45);
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: rotate(12deg);
+}
+
+.home-actions .action-card.c2 .orbit::before {
+  position: absolute;
+  top: 95px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #71937e;
+  content: "";
+}
+
+.home-actions .action-card.c2 .cross { top: 158px; right: 186px; opacity: .48; }
+
+.home-actions .action-card.c3 .grid { top: 125px; right: 157px; width: 110px; height: 132px; }
+.home-actions .action-card.c3 .wire {
+  position: absolute;
+  z-index: 1;
+  top: 68px;
+  right: 62px;
+  width: 246px;
+  height: 170px;
+  border: 1px solid rgba(0, 173, 118, .24);
+  pointer-events: none;
+  transform: skewY(-16deg);
+}
+
+.home-actions .action-card.c3 .wire::before,
+.home-actions .action-card.c3 .wire::after {
+  position: absolute;
+  background: rgba(0, 173, 118, .18);
+  content: "";
+}
+
+.home-actions .action-card.c3 .wire::before { top: 0; left: 49%; width: 1px; height: 100%; }
+.home-actions .action-card.c3 .wire::after { top: 49%; left: 0; width: 100%; height: 1px; }
+
+.home-actions .action-card.c4 .ellipse {
+  position: absolute;
+  z-index: 1;
+  top: 137px;
+  right: 28px;
+  width: 308px;
+  height: 132px;
+  border: 1px solid rgba(0, 173, 118, .36);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: rotate(9deg);
+}
+
+.home-actions .action-card.c4 .ellipse::before,
+.home-actions .action-card.c4 .ellipse::after {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #71937e;
+  content: "";
+}
+
+.home-actions .action-card.c4 .ellipse::before { top: 52px; left: -2px; }
+.home-actions .action-card.c4 .ellipse::after { top: 68px; right: -2px; }
+.home-actions .action-card.c4 .cross { top: 184px; right: 295px; opacity: .48; }
+
+@media (max-width: 980px) {
+  .home-actions .action-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .home-actions .action-card { min-height: 360px; }
+}
+
+@media (max-width: 620px) {
+  .home-actions .action-grid {
+    height: min(100svh, 760px);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .home-actions .action-card {
+    min-height: 0;
+    height: 100%;
+    border-radius: 18px;
+  }
+
+  .home-actions .feature-number {
+    top: 14px;
+    left: 18px;
+    font-size: clamp(16px, 4.5vw, 22px);
+  }
+
+  .home-actions .action-copy { right: 52px; bottom: 14px; left: 18px; }
+  .home-actions .action-copy strong { margin-bottom: 5px; font-size: clamp(17px, 4.8vw, 23px); line-height: 1.02; }
+  .home-actions .action-copy > span { font-size: clamp(11px, 3.2vw, 15px); line-height: 1.08; }
+
+  .home-actions .action-arrow {
+    right: 16px;
+    bottom: 10px;
+    width: 28px;
+    height: 28px;
+    font-size: 29px;
+  }
+
+  .home-actions .grid,
+  .home-actions .orbit,
+  .home-actions .ellipse,
+  .home-actions .cross { transform: scale(.5); transform-origin: 100% 0; }
+
+  .home-actions .action-card.c1 .grid { top: 18px; right: 94px; width: 92px; height: 74px; }
+  .home-actions .action-card.c1 .cross { top: 17px; right: 64px; }
+  .home-actions .action-card.c2 .grid { top: 18px; right: 88px; width: 94px; height: 72px; }
+  .home-actions .action-card.c2 .orbit { top: 12px; right: 26px; width: 120px; height: 120px; }
+  .home-actions .action-card.c2 .cross { top: 58px; right: 86px; }
+  .home-actions .action-card.c3 .grid { top: 26px; right: 73px; width: 88px; height: 70px; }
+  .home-actions .action-card.c3 .wire { top: 22px; right: 24px; width: 146px; height: 98px; }
+  .home-actions .action-card.c4 .ellipse { top: 32px; right: 18px; width: 176px; height: 78px; }
+  .home-actions .action-card.c4 .cross { top: 54px; right: 132px; }
+}
+
+@media (max-width: 360px), (max-height: 620px) {
+  .home-actions .action-grid { gap: 5px; }
+  .home-actions .action-card { border-radius: 15px; }
+  .home-actions .feature-number { top: 11px; left: 15px; font-size: 15px; }
+  .home-actions .action-copy { right: 44px; bottom: 10px; left: 15px; }
+  .home-actions .action-copy strong { margin-bottom: 3px; font-size: 16px; }
+  .home-actions .action-copy > span { font-size: 10px; }
+  .home-actions .action-arrow { right: 12px; bottom: 7px; font-size: 25px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-actions .action-card,
+  .home-actions .action-arrow { transition: none; }
+}

@@ -10,7 +10,7 @@ import { RedisMaxTransportState } from '../shared/redis/transport-state.js';
 const main = async (): Promise<void> => {
   const config = loadConfig();
   const logger = createLogger({ level: config.logLevel });
-  const redis = createRedisClient(config, logger);
+  let redis: ReturnType<typeof createRedisClient> | undefined;
   let runtime: ReturnType<typeof createMaxBot> | undefined;
   let shutdownTask: Promise<void> | undefined;
 
@@ -19,7 +19,7 @@ const main = async (): Promise<void> => {
     process.exitCode = Math.max(currentExitCode, exitCode);
     shutdownTask ??= (async () => {
       await runtime?.stop().catch((error: unknown) => logger.warn({ event: 'max_bot_stop_failed', error: errorToLogFields(error) }));
-      await closeRedisClient(redis);
+      if (redis) await closeRedisClient(redis);
     })();
     return shutdownTask;
   };
@@ -28,11 +28,14 @@ const main = async (): Promise<void> => {
   process.once('SIGTERM', () => { void shutdown(0); });
 
   try {
-    await connectRedisClient(redis);
+    if (config.redisUrl) {
+      redis = createRedisClient(config, logger);
+      await connectRedisClient(redis);
+    }
     runtime = createMaxBot({
       config,
       logger,
-      state: new RedisMaxTransportState(redis),
+      ...(redis ? { state: new RedisMaxTransportState(redis) } : {}),
       onFatal(error) {
         logger.fatal({ event: 'max_bot_fatal', error: errorToLogFields(error) });
         void shutdown(1);
