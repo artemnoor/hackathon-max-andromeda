@@ -72,7 +72,7 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     assert len(programs.json()["items"]) == 2
     assert assistant.status_code == 200, assistant.text
     assert assistant.json()["state"] == "needs_clarification", assistant.text
-    assert "metric" in assistant.json()["missing_slots"], assistant.text
+    assert assistant.json()["missing_slots"] == ["interests"], assistant.text
     assert curriculum.status_code == 200
     assert admissions.status_code == 200
     assert events.status_code == 200
