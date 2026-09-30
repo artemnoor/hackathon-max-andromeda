@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from hashlib import sha256
 
 from ...shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
-from ...shared.contracts.provenance import GapSeverity, SourceGapReference
+from ...shared.contracts.provenance import (
+    GapSeverity,
+    SourceAttribution,
+    SourceGapReference,
+)
 from .constraints import http_url
 from .raw import RawSourceGap, RawSourceSnapshot, SourceLocator
 
@@ -26,6 +31,22 @@ class CapturedSources:
                 (ErrorDetail(path="source.snapshots", message=f"invalid count for {kind}", type="source_selection"),),
             )
         return matches[0]
+
+
+def unique_source_attributions(
+    values: Iterable[SourceAttribution],
+) -> tuple[SourceAttribution, ...]:
+    """Preserve source order while removing equal provenance models.
+
+    ``SourceAttribution`` is a Pydantic model and is intentionally unhashable,
+    so ``dict.fromkeys`` cannot be used for ordered deduplication.
+    """
+
+    unique: list[SourceAttribution] = []
+    for value in values:
+        if value not in unique:
+            unique.append(value)
+    return tuple(unique)
 
 
 def source_fetch_gap(source_kind: str, source_url: str, reason: str) -> RawSourceGap:
@@ -110,4 +131,11 @@ def gap_severity_for_reason(reason: str) -> GapSeverity:
     return GapSeverity.DEGRADABLE
 
 
-__all__ = ["CapturedSources", "RawSourceSnapshot", "gap_severity_for_reason", "source_fetch_gap", "source_gap_reference"]
+__all__ = [
+    "CapturedSources",
+    "RawSourceSnapshot",
+    "gap_severity_for_reason",
+    "source_fetch_gap",
+    "source_gap_reference",
+    "unique_source_attributions",
+]
