@@ -56,7 +56,7 @@ def test_conversation_ai_timeout_is_separate_and_bounded(
     monkeypatch.setenv("ANDROMEDA_ENV", "test")
     monkeypatch.delenv("CONVERSATION_AI_TIMEOUT_SECONDS", raising=False)
 
-    assert Settings.from_environment().conversation_ai_timeout_seconds == 15.0
+    assert Settings.from_environment().conversation_ai_timeout_seconds == 6.5
 
     monkeypatch.setenv("CONVERSATION_AI_TIMEOUT_SECONDS", "22")
     assert Settings.from_environment().conversation_ai_timeout_seconds == 22.0

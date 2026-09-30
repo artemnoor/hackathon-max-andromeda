@@ -202,7 +202,8 @@ test('HTTP comparison query reaches the program analytics path', {
   assert.ok(
     ['deterministic', 'source_backed_verbalization'].includes(result.response?.response_mode ?? ''),
   );
-  assert.equal(result.response?.response_type, 'image');
+  assert.equal(result.response?.response_type, 'text');
+  assert.equal(result.response?.template, 'program-comparison-summary');
 });
 
 test('HTTP comparison renders a summary first and accepts a metric-only follow-up', {

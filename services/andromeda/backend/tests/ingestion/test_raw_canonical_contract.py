@@ -8,7 +8,11 @@ import pytest
 from pydantic import ValidationError
 
 from andromeda.ingestion.contracts.raw import RawCampusPointRecord, RawSourceGap, RawSourceSnapshot, SourceLocator
-from andromeda.ingestion.contracts.source import gap_severity_for_reason, source_gap_reference
+from andromeda.ingestion.contracts.source import (
+    gap_severity_for_reason,
+    source_gap_reference,
+    unique_source_attributions,
+)
 from andromeda.shared.contracts.enums import SourceKind
 from andromeda.shared.contracts.provenance import GapSeverity, SourceAttribution
 
@@ -57,6 +61,24 @@ def test_public_provenance_is_field_scoped_and_gaps_have_safe_severity() -> None
     )
     assert gap.severity is GapSeverity.DEGRADABLE
     assert gap.can_continue is True
+
+
+def test_source_attributions_are_deduplicated_without_hashing_contract_models() -> None:
+    captured_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    first = SourceAttribution(
+        kind=SourceKind.BMSTU_CURRICULUM_DOCUMENT,
+        url="https://bmstu.ru/plan.pdf",
+        captured_at=captured_at,
+        content_sha256=sha256(b"first").hexdigest(),
+    )
+    second = SourceAttribution(
+        kind=SourceKind.BMSTU_CURRICULUM_DOCUMENT,
+        url="https://bmstu.ru/plan-2.pdf",
+        captured_at=captured_at,
+        content_sha256=sha256(b"second").hexdigest(),
+    )
+
+    assert unique_source_attributions((first, second, first)) == (first, second)
 
 
 @pytest.mark.parametrize(

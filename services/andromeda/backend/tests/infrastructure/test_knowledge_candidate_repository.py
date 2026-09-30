@@ -847,7 +847,10 @@ def test_approved_source_bvi_rule_reaches_assistant_through_domain_evaluator() -
     from andromeda.modules.conversation.contracts.assistant import (
         PolicyAnswerStatus,
     )
-    from andromeda.modules.conversation.contracts.public import QuerySession
+    from andromeda.modules.conversation.contracts.public import (
+        ConversationIntent,
+        QuerySession,
+    )
     from andromeda.modules.entity_resolution.contracts.public import (
         ResolutionEntityType,
     )
@@ -1073,6 +1076,7 @@ def test_approved_source_bvi_rule_reaches_assistant_through_domain_evaluator() -
             seeded_session = QuerySession(
                 session_id="query-session:" + "e" * 32,
                 owner_scope=owner_scope,
+                intent=ConversationIntent.KNOWLEDGE_POLICY_QUERY,
                 entities={
                     ResolutionEntityType.UNIVERSITY: ("university:bmstu",),
                     ResolutionEntityType.PROGRAM: (PROGRAM_ID,),

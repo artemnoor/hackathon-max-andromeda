@@ -8,7 +8,10 @@ from hashlib import sha256
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
-from andromeda.ingestion.contracts.source import source_gap_reference
+from andromeda.ingestion.contracts.source import (
+    source_gap_reference,
+    unique_source_attributions,
+)
 from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.programs.contracts.public import Program
@@ -337,7 +340,9 @@ def _append_curriculum_item(items: list[CurriculumItem], item: CurriculumItem) -
                 "is_elective": existing.is_elective if existing.is_elective is not None else item.is_elective,
                 "course_block": existing.course_block if existing.course_block is not None else item.course_block,
                 "practice_type": existing.practice_type if existing.practice_type is not None else item.practice_type,
-                "provenance": tuple(dict.fromkeys((*existing.provenance, *item.provenance))),
+                "provenance": unique_source_attributions(
+                    (*existing.provenance, *item.provenance)
+                ),
             }
         )
         logger.warning(

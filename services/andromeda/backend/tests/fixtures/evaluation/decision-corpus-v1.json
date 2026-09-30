@@ -20,7 +20,7 @@
       "text": "Покажи топ программ с максимумом программирования и минимумом физики",
       "expected_intent": "analytics_query",
       "expected_metric": null,
-      "expected_action": "ask_clarification"
+      "expected_action": "execute_query"
     },
     {
       "case_id": "d-admission-score",

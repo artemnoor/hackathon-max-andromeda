@@ -8,6 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from andromeda.ingestion.universities.hse import HseUniversityAdapter
+from andromeda.ingestion.universities.hse.normalizers.canonical import (
+    normalize_bundle as normalize_hse_bundle,
+)
 from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.database.models import CurriculumModel, DisciplineModel, DirectionModel, ProgramModel
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
@@ -85,3 +88,34 @@ def test_bmstu_and_hse_can_share_direction_and_program_codes(tmp_path: Path) -> 
             assert session.scalar(select(func.count()).select_from(DirectionModel)) == 2
     finally:
         engine.dispose()
+
+
+def test_curriculum_normalizers_merge_duplicate_rows_with_unhashable_provenance() -> None:
+    from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
+    from andromeda.ingestion.universities.bmstu.normalizers.canonical import (
+        normalize_bundle as normalize_bmstu_bundle,
+    )
+
+    bmstu_fixture_dir = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
+    normalizers = (
+        (HseUniversityAdapter(), FIXTURE_DIR, normalize_hse_bundle),
+        (BmstuUniversityAdapter(), bmstu_fixture_dir, normalize_bmstu_bundle),
+    )
+    for adapter, fixture_dir, normalize in normalizers:
+        try:
+            raw, _ = adapter.parse_sources(fixture_dir=fixture_dir)
+        finally:
+            adapter.close()
+
+        assert raw.curriculum_rows
+        expected = normalize(raw)
+        duplicate_raw = raw.model_copy(
+            update={
+                "curriculum_rows": (
+                    *raw.curriculum_rows,
+                    raw.curriculum_rows[0],
+                )
+            }
+        )
+
+        assert normalize(duplicate_raw) == expected

@@ -28,6 +28,9 @@ test.beforeAll(async () => {
   await server.start();
 });
 test.afterAll(async () => server?.stop());
+test.beforeEach(async ({ page }) => {
+  await page.route('https://st.max.ru/**', (route) => route.abort());
+});
 
 const installLaunchProof = async (page: Page, proof: string): Promise<void> => {
   await page.addInitScript((value: string) => {
@@ -45,7 +48,6 @@ const installLaunchProof = async (page: Page, proof: string): Promise<void> => {
 };
 
 test('clone restores every original section without embedding program or curriculum samples', async ({ page }) => {
-  await page.route('https://st.max.ru/**', (route) => route.abort());
   let sessionRequests = 0;
   page.on('request', (request) => { if (new URL(request.url()).pathname === '/api/max/session') sessionRequests += 1; });
   await page.goto(origin);
@@ -62,8 +64,8 @@ test('signed MAX proof reaches the same-origin verifier; the full clone shell st
   await installLaunchProof(page, initData);
   let sessionRequest: { url: string; headers: Record<string, string> } | undefined;
   page.on('request', (request) => { if (new URL(request.url()).pathname === '/api/max/session') sessionRequest = { url: request.url(), headers: request.headers() }; });
-  await page.goto(origin);
-  await expect(page.locator('#page-home')).toBeVisible();
+  await page.goto(`${origin}/?page=profile`);
+  await expect(page.locator('#page-profile')).toBeVisible();
   await expect.poll(() => sessionRequest?.url).toBe(`${origin}/api/max/session`);
   expect(sessionRequest?.headers['x-max-init-data']).toBe(initData);
   expect(sessionRequest?.url.includes('initData')).toBe(false);

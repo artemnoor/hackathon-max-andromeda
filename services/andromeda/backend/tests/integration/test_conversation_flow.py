@@ -37,7 +37,7 @@ def test_admission_conversation_delegates_to_batch_admission_fit_contract() -> N
         expected_revision=session.revision,
         now=NOW + timedelta(seconds=2),
     )
-    assert session.next_action is NextAction.ASK_FOR_UNIVERSITY_SCOPE
+    assert session.next_action is NextAction.ASK_FOR_FUNDING
     session = engine.apply(
         session,
         "university:bmstu, бюджет",
