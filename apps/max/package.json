@@ -12,6 +12,7 @@
     "start:bot": "node dist/src/entrypoints/bot.js",
     "start:miniapp": "node dist/src/entrypoints/miniapp.js",
     "build": "tsc -p tsconfig.json && npm run build:miniapp",
+    "prebuild:miniapp": "npm ci --prefix miniapp-frontend",
     "build:miniapp": "vite build miniapp-frontend --config miniapp-frontend/vite.config.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "node scripts/lint.mjs",
