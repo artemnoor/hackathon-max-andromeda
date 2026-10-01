@@ -18,7 +18,9 @@ MAX Bot uses only `POST /api/v1/assistant/query`. Its TypeScript wire types are 
 - MAX transport state stores the opaque Andromeda guest-profile cookie, session ID/revision and activity time in Redis. It stores no transcript or applicant profile.
 - A MAX platform user ID is transient input used only to derive a one-way hashed Redis state key. It is not sent to Andromeda or used as Andromeda identity or authorization.
 - MAX renders typed assistant text, status, evidence summaries and action labels. It does not interpret policy, calculate admission results, inspect response data/metadata, or call Jev/LLM providers.
-- The Mini App is currently an authenticated-launch shell. Product data and assistant views remain future work.
+- The Mini App frontend is a JavaScript single-page app built with Vite and served by the Node.js/TypeScript MAX host. It currently includes the source-backed catalog, program details and curricula, comparison of 2–4 programs, admission checks, and navigation for profile, shortlist, ProfTest, recommendations, personal route, news/events, olympiads and admission rules. See [`apps/max/README.md`](../apps/max/README.md) for which views use API data and which remain local or empty.
+- Public catalog reads can be previewed in an ordinary browser. Requests that use a personal server profile validate signed MAX launch data on the server.
+- The Mini App keeps applicant-entered profile fields, exam scores, shortlist and progress in browser `localStorage`. These values are not MAX account identity; EGE scores are not currently synchronized to Andromeda.
 
 ## AI boundary
 

@@ -112,21 +112,27 @@ policy callsite is implied here.
 
 ## MAX
 
-MAX should send an update to `POST /assistant/query`, preserve the returned
-`session_id`/`revision`, and map `ResponseEnvelope` to text, image, PDF,
-buttons or a Mini App. It should not implement NLP, entity resolution,
-analytics, admission fit or response selection.
+The MAX integration is implemented in `apps/max/`. The Bot sends user text to
+`POST /api/v1/assistant/query`, preserves the returned session ID and revision,
+and renders the typed response as chat, buttons or PDF. The Mini App calls an
+allowlist of Public API v1 catalog, curriculum, admissions, comparison and
+profile operations through its Node.js host. That host verifies signed MAX
+launch data for protected requests. The Bot and Mini App do not own NLP,
+entity resolution or admission-fit and policy decisions; the Mini App renders
+and compares source-backed API data, while the Bot renders the assistant's
+typed response.
 
 ## Public client boundary
 
-Web currently uses the channel-neutral backend and Public API v1. A future MAX
-Bot or Mini App should call the same versioned contract; conversation state,
-entity resolution and domain decisions remain server-owned.
+Web and the current MAX Bot and Mini App use the channel-neutral backend and
+Public API v1. The Bot uses the assistant operation; the Mini App uses its
+allowlisted catalog and admission operations. Conversation state, entity
+resolution and domain decisions remain server-owned.
 
-The signed frontend `/og/*` renderer remains as a generic server-side image
+The signed frontend `/og/*` renderer remains a generic server-side image
 rendering capability. It fetches the same Public API v1 data and verifies
-HMAC-authenticated requests. It is not a public API operation and no current
-MAX transport is implemented.
+HMAC-authenticated requests. It is not a public API operation and is not used
+by the current MAX Bot or Mini App.
 
 ## Web and OG
 

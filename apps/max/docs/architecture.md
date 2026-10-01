@@ -42,14 +42,17 @@ Redis is the production shared state owner for rate counters, update leases/comp
 
 ## Mini App boundary
 
-The Mini App server has an explicit static-file allowlist, response-size bound, origin allowlist, CSP and server-side HMAC verification of launch initData. Browser data is sent only in a same-origin request header and is not placed in a URL, log, local storage or cookie.
+The Mini App frontend is a JavaScript single-page app built by Vite and served by the Node.js/TypeScript host. The host enforces an explicit static-file allowlist, response-size bound, origin allowlist and CSP. Signed MAX launch data is sent in the same-origin `X-Max-Init-Data` header and validated server-side for protected requests; it is not put in a URL or browser storage. Public catalog reads can run in an ordinary browser preview without a MAX launch.
 
-The Mini App uses its signed MAX launch proof in a same-origin request header for every catalog read. The host maps a fixed allowlist of catalog, curriculum, admissions and comparison requests to Andromeda Public API v1 and returns the source-backed DTO without storing MAX or Andromeda identity. The browser holds only a transient pair of program IDs for comparison. The Mini App does not create an account link, calculate admission outcomes, store a profile or call an assistant provider.
+The host maps an explicit allowlist of catalog, curriculum, admissions, comparison, profile, recommendation, events and admission-benefit requests to Andromeda Public API v1. Admission-fit requests are also forwarded to the backend, which owns the decision. The host does not use the MAX platform user ID as an Andromeda identity or link MAX accounts.
+
+The frontend persists profile fields, exam scores, shortlist, comparison selection and progress in browser `localStorage`. This state is local to that browser. EGE scores entered in the Mini App are not synchronized to the Andromeda profile, and recommendations use the server-side profile. The personal-route view is calculated from local progress. News combines API events with curated, source-linked items; the bundled olympiad list is currently empty.
 
 ## Deliberately absent
 
-- MAX-specific admission, policy or eligibility calculations.
+- MAX-specific admission, policy or eligibility calculations; admission-fit decisions are requested from Andromeda.
 - Direct Bot or Mini App imports of Python, SQLAlchemy, PostgreSQL, Jev or LLM provider code.
-- MAX-account authentication or implicit applicant-profile collection.
+- MAX-account linking or implicit applicant-profile collection.
+- Server-side synchronization of Mini App EGE scores, shortlist and progress.
 - A second conversation backend, transcript store, queue, database or microservice.
-- Personal profile, shortlist, predictive admission and other screens without a verified Public API integration in the Mini App.
+- A Mini App assistant or MAX notifications connected to the Bot.

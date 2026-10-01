@@ -18,9 +18,9 @@ Next standalone и запускается deployment-описаниями из `
 `NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike
 retired и не является runtime/package частью проекта.
 
-Public API v1 is the stable boundary for Web and future external clients,
-including MAX Bot and Mini App. It aliases existing FastAPI handlers; clients
-do not own domain logic or access internal operator routes.
+Public API v1 is the stable boundary for Web and the current MAX Bot and Mini
+App, as well as future external clients. It aliases existing FastAPI handlers;
+clients do not own domain logic or access internal operator routes.
 
 OpenAPI экспортируется backend script и генерирует единственный client в
 `frontend-next`. Production proftest находится в
@@ -181,7 +181,7 @@ contexts, не принадлежащие клиентскому transport-у и
 ```text
 ingestion → canonical storage → semantic → projections
           → analytics (QuerySpec) → conversation/policies
-          → ResponseEnvelope → Public API v1 → Web / future MAX clients
+          → ResponseEnvelope → Public API v1 → Web / MAX Bot
 ```
 
 `semantic`, `analytics`, `entity_resolution`, `conversation` и `presentation`
@@ -218,7 +218,7 @@ backend:
            ↘ optional TypeSafe production adapter
            ↘ shadow evaluation
       → AnalyticsResult / ResponsePlan / ResponseEnvelope
-      → Web / OG / future MAX clients
+      → Web / OG / MAX Bot
 
 The normal factual path is deterministic and source-backed. A Jev adapter may
 answer only bounded control questions such as intent, metric, next action,

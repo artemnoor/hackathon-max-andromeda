@@ -14,4 +14,4 @@ The Redis state integration test runs when `MAX_TEST_REDIS_URL` points to an una
 
 GitHub Actions runs the same disposable monorepo E2E against the root Compose stack after component and contract jobs pass. It installs Chromium, starts fixture ingestion against PostgreSQL, and uses no MAX or AI-provider credential.
 
-Browser tests use deterministic synthetic MAX `initData` signed with a fixture-only token. They verify preview behavior, same-origin header transport, no browser storage writes, and fail-closed invalid signatures. They do not contact MAX or Andromeda.
+Browser tests use deterministic synthetic MAX `initData` signed with a fixture-only token. They verify that public preview opens without a signed session, launch data travels in a same-origin header rather than a URL, MAX identity is not saved with browser state, and invalid signatures fail closed. The Mini App does save its own profile and progress state in `localStorage`; launch data is not stored there. When `MAX_E2E_ANDROMEDA_URL` is set, the browser suite also calls that fixture-backed Public API. Tests never contact the live MAX platform.

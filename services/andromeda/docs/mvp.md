@@ -25,7 +25,7 @@ and [the gate](release/mvp-production-level-gate.md).
 - adaptive profile как необязательный refinement-инструмент;
 - comparison summary-first и raw evidence drill-down;
 - product analytics, admin ingestion audit, events/campus там, где есть source-backed данные;
-- Web and future MAX clients as consumers of the same channel-neutral backend API.
+- Web, MAX Bot and Mini App consume the same channel-neutral backend API through their respective Public API v1 operations; domain decisions remain backend-owned.
 
 ## Out of MVP
 
