@@ -72,6 +72,6 @@ Caddy, automatic HTTPS, PostgreSQL backups, and the readiness check at
 decision scoring remain backend-owned. The MAX Bot and Mini App are implemented
 in the separate `apps/max/` runtime and use this same Public API v1 boundary.
 The Mini App also keeps applicant-entered profile and EGE state in the browser;
-it is not synchronized to the Andromeda profile. See the [MAX architecture
-notes](../../../../apps/max/docs/architecture.md). Any MAX deployment should
-preserve the Public API v1 boundary.
+it is not synchronized to the Andromeda profile. See
+`apps/max/docs/architecture.md` for the MAX-side ownership details. Any MAX
+deployment should preserve the Public API v1 boundary.
