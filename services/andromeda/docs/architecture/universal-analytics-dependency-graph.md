@@ -17,7 +17,7 @@ flowchart LR
   canonical --> api[FastAPI routes]
   decision --> api
   api --> public[Public API v1]
-  public --> clients[Web / future MAX clients]
+  public --> clients[Web / MAX Bot]
 ```
 
 ## Known direction risks
@@ -44,7 +44,7 @@ flowchart LR
   engine --> response[ResponsePolicyPort]
   response --> envelope[ResponseEnvelope]
   envelope --> public[Public API v1]
-  public --> clients[Web / future MAX clients]
+  public --> clients[Web / MAX Bot]
 ```
 
 ## Enforced rules

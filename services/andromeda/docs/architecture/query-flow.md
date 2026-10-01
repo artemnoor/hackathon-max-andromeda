@@ -49,7 +49,7 @@ user question
   → for admission benefits: exact complete owner revisions + explicit applicant facts
   → existing AdmissionDecisionService + typed result, or fail-closed missing-data codes
   → existing ResponseEnvelope
-  → channel-neutral Public API v1 → Web / future MAX clients
+  → channel-neutral Public API v1 → Web / MAX Bot
 ```
 
 The resolver reads only an explicitly human-approved exact revision and returns

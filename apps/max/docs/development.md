@@ -11,19 +11,19 @@ Copy .env.example to .env and set MAX_BOT_TOKEN for an actual Bot connection. AN
 
 ## Run
 
-\`\`\`powershell
+```powershell
 npm ci
 npm run dev:bot
 npm run dev:miniapp
-\`\`\`
+```
 
-Those commands run separate processes. Start the Andromeda backend and Redis according to the root monorepo and services/andromeda guides. The Mini App is served on port 8787 and reads the real catalog from `ANDROMEDA_API_BASE_URL` after MAX launch validation. The Bot uses polling in development; protected deployments require webhook plus Redis TLS.
+Those commands run separate processes. Start the Andromeda backend and Redis according to the root monorepo and services/andromeda guides. The Mini App frontend is JavaScript built with Vite; the Node.js/TypeScript host serves it on port 8787 and reads the catalog from `ANDROMEDA_API_BASE_URL`. Public catalog reads work in browser preview without MAX launch data. Requests that use personal profile data require a valid signed launch. The Bot uses polling in development; protected deployments require webhook plus Redis TLS.
 
 For deterministic tests, no MAX token or live AI provider is required:
 
-\`\`\`powershell
+```powershell
 npm run verify
-\`\`\`
+```
 
 To exercise Redis Lua commands, set MAX_TEST_REDIS_URL to an unauthenticated loopback Redis database from 1 through 15 and run npm run test:integration. Never point this test variable at a shared or production Redis.
 

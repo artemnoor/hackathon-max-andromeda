@@ -72,7 +72,7 @@ The dependency direction is:
       → deterministic analytics
       → conversation and policies
       → response envelope
-      → Public API v1 → Web and future MAX clients
+      → Public API v1 → Web / MAX Bot
 
 No subject module imports a Jev SDK, Node package or isolated service client.
 AndromedaContainer is the only composition root.

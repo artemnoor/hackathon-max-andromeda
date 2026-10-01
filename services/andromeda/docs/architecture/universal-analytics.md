@@ -8,7 +8,7 @@ official sources
   → ingestion → canonical entities
   → semantic enrichment → program projections
   → typed AnalyticsExecutor → QuerySpec result
-  → ConversationEngine / ResponseEnvelope → Public API v1 → Web / future MAX
+  → ConversationEngine / ResponseEnvelope → Public API v1 → Web / MAX Bot
 ```
 
 The canonical layer remains `University`, `Direction`, `Program`, `Curriculum`,
@@ -55,8 +55,10 @@ cannot emit SQL or bypass the metric registry.
 - `POST /analytics/query` accepts a strict typed analytics request without NLP.
 - `POST /assistant/query` accepts text plus optional `sessionId` and
   `expectedRevision`, and returns clarification or a complete envelope.
-- Web uses `queryAssistant` and the `AssistantPage`; future MAX clients can
-  use the same public endpoint and envelope without importing backend code.
+- Web uses `queryAssistant` and the `AssistantPage`; the current MAX Bot sends
+  text to the same public `/assistant/query` operation and renders its typed
+  envelope. The Mini App uses catalog and admission routes rather than the
+  assistant operation.
 
 All result values retain basis, coverage, confidence, quality status,
 provenance, semantic/classifier versions and evidence references. Missing data
